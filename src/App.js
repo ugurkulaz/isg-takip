@@ -1007,25 +1007,62 @@ export default function App() {
       setYukleniyor2(false);
     };
 
-    // Toplu parse - format: TC [TAB] Tarih1 [TAB] Tarih2(opsiyonel)
+    // Tarih parse yardımcısı
+    const parseTarih = (t) => {
+      if (!t) return null;
+      t = t.trim();
+      if (/^\d{2}\.\d{2}\.\d{4}$/.test(t)) { const [g,a,y] = t.split("."); return `${y}-${a}-${g}`; }
+      if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return t;
+      return null;
+    };
+
+    // Excel yapıştırma parse: Firma | Ad Soyad | Görev | TCKN | Eğitim1 | Eğitim2
+    // Aynı TC için birden fazla satır olabilir — tüm tarihleri toplar
     const topluKarsilastir = () => {
       const satirlar = topluMetin.trim().split("\n").map(s => s.trim()).filter(Boolean);
-      const basarili = [], hatali = [];
-      const parseTarih = (t) => {
-        if (!t) return null;
-        t = t.trim();
-        if (/^\d{2}\.\d{2}\.\d{4}$/.test(t)) { const [g,a,y] = t.split("."); return `${y}-${a}-${g}`; }
-        return t;
-      };
+      const tcHavuzu = {}; // tc → { p, tarihler: [] }
+      const hatali = [];
+
       satirlar.forEach(satir => {
-        const parcalar = satir.split(/\t|;/);
-        const tc = parcalar[0]?.trim();
-        const tarih1 = parseTarih(parcalar[1]);
-        const tarih2 = parseTarih(parcalar[2]);
+        const parcalar = satir.split(/\t/);
+        // Firma(0) AdSoyad(1) Görev(2) TCKN(3) Eğitim1(4) Eğitim2(5)
+        // veya sadece TCKN(0) Eğitim1(1) Eğitim2(2) formatı da destekle
+        let tc, t1, t2;
+        if (parcalar.length >= 4) {
+          // Excel tam format
+          tc = parcalar[3]?.trim();
+          t1 = parseTarih(parcalar[4]);
+          t2 = parseTarih(parcalar[5]);
+        } else {
+          // Kısa format: TC Tarih1 Tarih2
+          tc = parcalar[0]?.trim();
+          t1 = parseTarih(parcalar[1]);
+          t2 = parseTarih(parcalar[2]);
+        }
+
         const p = firmaPersonel.find(x => x.tc_no === tc);
-        if (p && tarih1) basarili.push({ p, tarih1, tarih2 });
-        else hatali.push({ satir, sebep: !p ? "TC bulunamadı" : "Eğitim 1 tarihi eksik" });
+        if (!p) { hatali.push({ satir, sebep: "TC firmada bulunamadı" }); return; }
+        if (!t1 && !t2) { hatali.push({ satir, sebep: "Tarih bulunamadı" }); return; }
+
+        if (!tcHavuzu[tc]) tcHavuzu[tc] = { p, tarihler: [] };
+        if (t1) tcHavuzu[tc].tarihler.push(t1);
+        if (t2 && t2 !== t1) tcHavuzu[tc].tarihler.push(t2);
       });
+
+      // Her TC için tarihleri sırala, Eğitim1=en erken, Eğitim2=sonraki (eğer hedef 2 eğitimse)
+      const basarili = Object.values(tcHavuzu).map(({ p, tarihler }) => {
+        const benzersiz = [...new Set(tarihler)].sort((a, b) => new Date(a) - new Date(b));
+        const tarih1 = benzersiz[0] || null;
+        // Eğitim2: sadece çok tehlikeli/tehlikeli için gerekli
+        const tarih2 = (tehlike?.egitim2Saat > 0 && benzersiz.length > 1) ? benzersiz[1] : null;
+        // Geçerlilik: iki eğitim gerekliyse her ikisi de varsa en erken tarihten, tek eğitimse o tarihten
+        const gecerlilikBas = tarih1;
+        const periyot = egitimTurleri.find(e => e.id === egitimTuru)?.periyotFn(firma?.tehlike_sinifi);
+        const gecerlilikBitis = gecerlilikBas && periyot ? sonrakiTarih(gecerlilikBas, periyot) : null;
+        const tamamlandi = tehlike?.egitim2Saat > 0 ? (tarih1 && tarih2) : !!tarih1;
+        return { p, tarih1, tarih2, benzersizSayisi: benzersiz.length, gecerlilikBitis, tamamlandi };
+      });
+
       setTopluSonuc({ basarili, hatali });
     };
 
@@ -1033,9 +1070,11 @@ export default function App() {
       if (!topluSonuc) return;
       setYukleniyor2(true);
       for (const kayit of topluSonuc.basarili) {
-        const mevcut1 = egitimler.find(e => e.personel_id === kayit.p.id && e.egitim_turu === egitimTuru && e.egitim_no === 1);
-        if (mevcut1) await supabase.from("egitimler").update({ egitim_tarihi: kayit.tarih1 }).eq("id", mevcut1.id);
-        else await supabase.from("egitimler").insert({ personel_id: kayit.p.id, egitim_turu: egitimTuru, egitim_tarihi: kayit.tarih1, egitim_no: 1 });
+        if (kayit.tarih1) {
+          const mevcut1 = egitimler.find(e => e.personel_id === kayit.p.id && e.egitim_turu === egitimTuru && e.egitim_no === 1);
+          if (mevcut1) await supabase.from("egitimler").update({ egitim_tarihi: kayit.tarih1 }).eq("id", mevcut1.id);
+          else await supabase.from("egitimler").insert({ personel_id: kayit.p.id, egitim_turu: egitimTuru, egitim_tarihi: kayit.tarih1, egitim_no: 1 });
+        }
         if (kayit.tarih2 && tehlike?.egitim2Saat > 0) {
           const mevcut2 = egitimler.find(e => e.personel_id === kayit.p.id && e.egitim_turu === egitimTuru && e.egitim_no === 2);
           if (mevcut2) await supabase.from("egitimler").update({ egitim_tarihi: kayit.tarih2 }).eq("id", mevcut2.id);
@@ -1046,7 +1085,7 @@ export default function App() {
       setTopluSonuc(null);
       setTopluMetin("");
       setYukleniyor2(false);
-      alert(`✅ ${topluSonuc.basarili.length} kayıt güncellendi!`);
+      alert(`✅ ${topluSonuc.basarili.length} kişi güncellendi!`);
     };
 
     const egitimAdi = egitimTurleri.find(e => e.id === egitimTuru)?.ad || "";
@@ -1196,40 +1235,70 @@ export default function App() {
             <CardHeader title={`📤 Toplu Yükleme — ${egitimAdi}`} />
             <div style={{ padding: 20 }}>
               <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 8, background: "#0f172a", borderRadius: 8, padding: 12 }}>
-                📌 Format: <span style={{ color: "#60a5fa", fontFamily: "monospace" }}>TC No [TAB] Eğitim1 Tarihi [TAB] Eğitim2 Tarihi (opsiyonel)</span><br/>
-                Örnek: <span style={{ color: "#4ade80", fontFamily: "monospace" }}>12345678901{"	"}15.01.2025{"	"}20.02.2025</span><br/>
-                <span style={{ color: "#fbbf24" }}>⚠️ {firma?.tehlike_sinifi}: Eğitim1={tehlike?.egitim1Saat}s{tehlike?.egitim2Saat > 0 ? `, Eğitim2=${tehlike?.egitim2Saat}s` : " (tek eğitim yeterli)"}, Hedef={tehlike?.toplamSaat}s</span>
+                <div style={{ fontWeight: 700, color: "#f3f4f6", marginBottom: 8 }}>📋 Excel'den doğrudan yapıştırın — iki format desteklenir:</div>
+                <div style={{ marginBottom: 6 }}>
+                  <span style={{ color: "#60a5fa" }}>Tam format:</span> <span style={{ fontFamily: "monospace", color: "#4ade80" }}>Firma [TAB] Ad Soyad [TAB] Görev [TAB] TCKN [TAB] Eğitim1 [TAB] Eğitim2</span>
+                </div>
+                <div style={{ marginBottom: 8 }}>
+                  <span style={{ color: "#60a5fa" }}>Kısa format:</span> <span style={{ fontFamily: "monospace", color: "#4ade80" }}>TCKN [TAB] Eğitim1 Tarihi [TAB] Eğitim2 Tarihi</span>
+                </div>
+                <div style={{ color: "#fbbf24" }}>
+                  ⚠️ Aynı kişinin birden fazla satırı varsa sistem otomatik birleştirir —
+                  en erken tarih → Eğitim 1, sonraki → Eğitim 2.<br/>
+                  {tehlike && `📐 ${firma?.tehlike_sinifi}: Eğitim1=${tehlike.egitim1Saat}s${tehlike.egitim2Saat > 0 ? `, Eğitim2=${tehlike.egitim2Saat}s` : " (tek eğitim yeterli)"} → Hedef=${tehlike.toplamSaat}s`}
+                </div>
               </div>
-              <textarea value={topluMetin} onChange={e => setTopluMetin(e.target.value)} rows={8}
-                placeholder={"TC No\tEğitim1 Tarihi\tEğitim2 Tarihi\n12345678901\t15.01.2025\t20.02.2025"}
-                style={{ width: "100%", padding: "10px 14px", background: "#0f172a", border: "1px solid #374151", borderRadius: 8, color: "#e5e7eb", fontSize: 13, resize: "vertical", boxSizing: "border-box", fontFamily: "monospace", marginBottom: 12 }} />
+              <textarea value={topluMetin} onChange={e => { setTopluMetin(e.target.value); setTopluSonuc(null); }} rows={10}
+                placeholder={"Excel'den kopyala-yapıştır:\nSODEXO DIŞ CEPHE\tOnur Şensoy\tCamcı\t57607355682\t28.01.2025\t28.01.2025\nSODEXO DIŞ CEPHE\tZeki Senok\tCamcı\t32438095778\t21.01.2025\t21.01.2025"}
+                style={{ width: "100%", padding: "10px 14px", background: "#0f172a", border: "1px solid #374151", borderRadius: 8, color: "#e5e7eb", fontSize: 12, resize: "vertical", boxSizing: "border-box", fontFamily: "monospace", marginBottom: 12 }} />
               <div style={{ display: "flex", gap: 10 }}>
-                <Btn onClick={topluKarsilastir} disabled={!topluMetin.trim()} variant="secondary">🔍 Kontrol Et</Btn>
+                <Btn onClick={topluKarsilastir} disabled={!topluMetin.trim()} variant="secondary">🔍 Analiz Et</Btn>
                 {topluSonuc && <Btn onClick={topluOnayla} variant="success" disabled={!topluSonuc.basarili.length || yukleniyor2}>
-                  {yukleniyor2 ? "Kaydediliyor..." : `✅ ${topluSonuc.basarili.length} Kaydı Onayla`}
+                  {yukleniyor2 ? "Kaydediliyor..." : `✅ ${topluSonuc.basarili.length} Kişiyi Kaydet`}
                 </Btn>}
-                {topluSonuc && <Btn onClick={() => setTopluSonuc(null)} variant="danger">İptal</Btn>}
+                {topluSonuc && <Btn onClick={() => { setTopluSonuc(null); }} variant="danger">İptal</Btn>}
               </div>
+
               {topluSonuc && (
                 <div style={{ marginTop: 20 }}>
                   {topluSonuc.basarili.length > 0 && (
                     <div style={{ marginBottom: 14 }}>
-                      <div style={{ fontWeight: 700, color: "#4ade80", marginBottom: 8 }}>✅ Eklenecek ({topluSonuc.basarili.length})</div>
+                      <div style={{ fontWeight: 700, color: "#4ade80", marginBottom: 10, fontSize: 14 }}>
+                        ✅ Kaydedilecek — {topluSonuc.basarili.length} kişi
+                      </div>
                       <table style={{ width: "100%", borderCollapse: "collapse" }}>
                         <thead><tr style={{ background: "#0f172a" }}>
-                          {["Ad Soyad", "TC No", "Eğitim 1", "Eğitim 2", "Toplam"].map(h => <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontSize: 11, color: "#6b7280", fontWeight: 700 }}>{h}</th>)}
+                          {["Ad Soyad", "TC No", "Eğitim 1", "Eğitim 2", "Toplam Saat", "Geçerlilik Bitiş"].map(h =>
+                            <th key={h} style={{ padding: "9px 12px", textAlign: "left", fontSize: 11, color: "#6b7280", fontWeight: 700, textTransform: "uppercase" }}>{h}</th>)}
                         </tr></thead>
                         <tbody>
                           {topluSonuc.basarili.map((k, i) => {
-                            const saat1 = tehlike?.egitim1Saat || 0;
-                            const saat2 = k.tarih2 && tehlike?.egitim2Saat > 0 ? tehlike.egitim2Saat : 0;
+                            const saat1 = k.tarih1 ? (tehlike?.egitim1Saat || 0) : 0;
+                            const saat2 = k.tarih2 ? (tehlike?.egitim2Saat || 0) : 0;
+                            const toplam = saat1 + saat2;
+                            const hedef = tehlike?.toplamSaat || 0;
                             return (
                               <tr key={i} style={{ borderTop: "1px solid #1f2937" }}>
-                                <td style={{ padding: "9px 12px", color: "#f3f4f6", fontSize: 13 }}>{k.p.ad_soyad}</td>
-                                <td style={{ padding: "9px 12px", color: "#6b7280", fontSize: 12, fontFamily: "monospace" }}>{k.p.tc_no}</td>
-                                <td style={{ padding: "9px 12px", color: "#4ade80", fontSize: 13 }}>{formatTarih(k.tarih1)} <span style={{ color: "#6b7280" }}>({saat1}s)</span></td>
-                                <td style={{ padding: "9px 12px", fontSize: 13 }}>{k.tarih2 ? <span style={{ color: "#4ade80" }}>{formatTarih(k.tarih2)} <span style={{ color: "#6b7280" }}>({tehlike?.egitim2Saat}s)</span></span> : <span style={{ color: "#4b5563" }}>—</span>}</td>
-                                <td style={{ padding: "9px 12px", fontWeight: 700, color: (saat1+saat2) >= (tehlike?.toplamSaat||0) ? "#4ade80" : "#fbbf24" }}>{saat1+saat2}/{tehlike?.toplamSaat}s</td>
+                                <td style={{ padding: "10px 12px", fontWeight: 600, color: "#f3f4f6", fontSize: 13 }}>{k.p.ad_soyad}</td>
+                                <td style={{ padding: "10px 12px", color: "#6b7280", fontSize: 12, fontFamily: "monospace" }}>{k.p.tc_no}</td>
+                                <td style={{ padding: "10px 12px", fontSize: 13 }}>
+                                  {k.tarih1 ? <span style={{ color: "#4ade80" }}>{formatTarih(k.tarih1)} <span style={{ color: "#6b7280", fontSize: 11 }}>({tehlike?.egitim1Saat}s)</span></span> : <span style={{ color: "#4b5563" }}>—</span>}
+                                </td>
+                                <td style={{ padding: "10px 12px", fontSize: 13 }}>
+                                  {tehlike?.egitim2Saat > 0
+                                    ? k.tarih2
+                                      ? <span style={{ color: "#4ade80" }}>{formatTarih(k.tarih2)} <span style={{ color: "#6b7280", fontSize: 11 }}>({tehlike.egitim2Saat}s)</span></span>
+                                      : <span style={{ color: "#f87171", fontSize: 12 }}>Eksik</span>
+                                    : <span style={{ color: "#4b5563", fontSize: 12 }}>—</span>}
+                                </td>
+                                <td style={{ padding: "10px 12px" }}>
+                                  <span style={{ fontWeight: 700, color: toplam >= hedef ? "#4ade80" : "#fbbf24" }}>
+                                    {toplam >= hedef ? "✅" : "⚠️"} {toplam}/{hedef}s
+                                  </span>
+                                </td>
+                                <td style={{ padding: "10px 12px", color: k.tamamlandi ? "#60a5fa" : "#4b5563", fontSize: 13 }}>
+                                  {k.gecerlilikBitis ? formatTarih(k.gecerlilikBitis) : "—"}
+                                </td>
                               </tr>
                             );
                           })}
@@ -1239,10 +1308,11 @@ export default function App() {
                   )}
                   {topluSonuc.hatali.length > 0 && (
                     <div>
-                      <div style={{ fontWeight: 700, color: "#f87171", marginBottom: 8 }}>❌ Hatalı ({topluSonuc.hatali.length})</div>
+                      <div style={{ fontWeight: 700, color: "#f87171", marginBottom: 8 }}>❌ Eşleştirilemeyen satırlar ({topluSonuc.hatali.length})</div>
                       {topluSonuc.hatali.map((h, i) => (
                         <div key={i} style={{ background: "#1f0707", borderRadius: 6, padding: "7px 12px", marginBottom: 4, fontSize: 12, color: "#fca5a5" }}>
-                          <span style={{ fontFamily: "monospace" }}>{h.satir}</span> — {h.sebep}
+                          <span style={{ fontFamily: "monospace" }}>{h.satir.substring(0, 80)}{h.satir.length > 80 ? "..." : ""}</span>
+                          <span style={{ color: "#f87171", marginLeft: 8 }}>→ {h.sebep}</span>
                         </div>
                       ))}
                     </div>
