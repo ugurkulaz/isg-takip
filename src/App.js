@@ -46,7 +46,7 @@ const durumHesapla = (sonTarih, periyot) => {
 
 // ─── UI BİLEŞENLERİ ──────────────────────────────────────────────────────────
 const Badge = ({ d, tarih }) => (
-  <div style={{ textAlign: "right", minWidth: 90 }}>
+  <div style={{ textAlign: "center", minWidth: 90 }}>
     <span style={{ background: d.bg, color: d.renk, borderRadius: 6, padding: "3px 10px", fontSize: 12, fontWeight: 700, display: "inline-block" }}>{d.label}</span>
     {tarih && <div style={{ fontSize: 11, color: "#6b7280", marginTop: 3 }}>{formatTarih(tarih)}</div>}
   </div>
@@ -682,7 +682,7 @@ export default function App() {
             <thead>
               <tr style={{ background: "#0f172a" }}>
                 {["Ad Soyad", "TC No", "Görev", "İşe Giriş", "İSG Eğitimi", "Periyodik Muayene", ""].map(h => (
-                  <th key={h} style={{ padding: "11px 16px", textAlign: "left", fontSize: 11, color: "#6b7280", fontWeight: 700, textTransform: "uppercase" }}>{h}</th>
+                  <th key={h} style={{ padding: "11px 16px", textAlign: h === "İSG Eğitimi" || h === "Periyodik Muayene" ? "center" : "left", fontSize: 11, color: "#6b7280", fontWeight: 700, textTransform: "uppercase" }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -699,8 +699,8 @@ export default function App() {
                     <td style={{ padding: "12px 16px", color: "#9ca3af", fontSize: 12, fontFamily: "monospace" }}>{p.tc_no}</td>
                     <td style={{ padding: "12px 16px", color: "#d1d5db", fontSize: 13 }}>{p.gorev}</td>
                     <td style={{ padding: "12px 16px", color: "#9ca3af", fontSize: 13 }}>{formatTarih(p.ise_giris)}</td>
-                    <td style={{ padding: "12px 16px" }}><Badge d={isgD} tarih={isgTarih} /></td>
-                    <td style={{ padding: "12px 16px" }}><Badge d={perD} tarih={perTarih} /></td>
+                    <td style={{ padding: "12px 16px", textAlign: "center" }}><Badge d={isgD} tarih={isgTarih} /></td>
+                    <td style={{ padding: "12px 16px", textAlign: "center" }}><Badge d={perD} tarih={perTarih} /></td>
                     <td style={{ padding: "12px 16px" }}>
                       <Btn onClick={() => { setSecPersonel(p); setAktifTab("egitim"); }} variant="secondary" style={{ fontSize: 12, padding: "6px 12px" }}>Detay</Btn>
                     </td>
