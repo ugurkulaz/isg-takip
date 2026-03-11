@@ -1151,8 +1151,8 @@ export default function App() {
   };
 
 
+  const RaporSayfa = () => {
     const [secFirmaId, setSecFirmaId] = useState(firmalar[0]?.id || null);
-    const [aktifRapor, setAktifRapor] = useState("egitim");
     const firma = firmalar.find(f => f.id === secFirmaId);
     const firmaPersonel = aktifPersonel.filter(p => p.firma_id === secFirmaId);
 
