@@ -698,4 +698,111 @@ export default function App() {
                     <td style={{ padding: "12px 16px", fontWeight: 600, color: "#f3f4f6" }}>{p.ad_soyad}</td>
                     <td style={{ padding: "12px 16px", color: "#9ca3af", fontSize: 12, fontFamily: "monospace" }}>{p.tc_no}</td>
                     <td style={{ padding: "12px 16px", color: "#d1d5db", fontSize: 13 }}>{p.gorev}</td>
-                    <td style={{ paddin
+                    <td style={{ padding: "12px 16px", color: "#9ca3af", fontSize: 13 }}>{formatTarih(p.ise_giris)}</td>
+                    <td style={{ padding: "12px 16px" }}><Badge d={isgD} tarih={isgTarih} /></td>
+                    <td style={{ padding: "12px 16px" }}><Badge d={perD} tarih={perTarih} /></td>
+                    <td style={{ padding: "12px 16px" }}>
+                      <Btn onClick={() => { setSecPersonel(p); setAktifTab("egitim"); }} variant="secondary" style={{ fontSize: 12, padding: "6px 12px" }}>Detay</Btn>
+                    </td>
+                  </tr>
+                );
+              })}
+              {fps.length === 0 && (
+                <tr><td colSpan={7} style={{ padding: 40, textAlign: "center", color: "#6b7280" }}>Personel yok. "Personel Güncelle" ile ekleyin.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </Card>
+      </div>
+    );
+  };
+
+  const RaporSayfa = () => {
+    const kritikler = aktifPersonel.flatMap(p => {
+      const f = firmalar.find(x => x.id === p.firma_id);
+      return EGITIM_TURLERI.flatMap(e => {
+        const son = sonEgitimBul(p.id, e.id);
+        const d = durumHesapla(son, e.periyotFn(f?.tehlike_sinifi));
+        return d.onc >= 3 ? [{ p, f, tip: e.ad, icon: e.icon, d }] : [];
+      });
+    }).sort((a, b) => b.d.onc - a.d.onc);
+    return (
+      <Card>
+        <CardHeader title={`🚨 Kritik Kayıtlar (${kritikler.length})`} />
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead>
+            <tr style={{ background: "#0f172a" }}>
+              {["Personel", "Firma", "Tür", "Durum", ""].map(h => (
+                <th key={h} style={{ padding: "11px 16px", textAlign: "left", fontSize: 11, color: "#6b7280", fontWeight: 700, textTransform: "uppercase" }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {kritikler.map((k, i) => (
+              <tr key={i} style={{ borderTop: "1px solid #1f2937" }}>
+                <td style={{ padding: "12px 16px", fontWeight: 600, color: "#f3f4f6" }}>{k.p.ad_soyad}</td>
+                <td style={{ padding: "12px 16px", color: "#9ca3af", fontSize: 13 }}>{k.f?.ad}</td>
+                <td style={{ padding: "12px 16px", color: "#d1d5db", fontSize: 13 }}>{k.icon} {k.tip}</td>
+                <td style={{ padding: "12px 16px" }}><Badge d={k.d} /></td>
+                <td style={{ padding: "12px 16px" }}>
+                  <Btn onClick={() => { setSecPersonel(k.p); setAktifTab("egitim"); }} variant="danger" style={{ fontSize: 12, padding: "6px 12px" }}>Güncelle</Btn>
+                </td>
+              </tr>
+            ))}
+            {kritikler.length === 0 && (
+              <tr><td colSpan={5} style={{ padding: 40, textAlign: "center", color: "#4ade80" }}>✅ Tüm kayıtlar güncel!</td></tr>
+            )}
+          </tbody>
+        </table>
+      </Card>
+    );
+  };
+
+  // ─── RENDER ───────────────────────────────────────────────────────────────
+  if (oturumYukleniyor) return (
+    <div style={{ minHeight: "100vh", background: "#0a0f1e", display: "flex", alignItems: "center", justifyContent: "center", color: "#60a5fa", fontSize: 18 }}>
+      ⏳ Yükleniyor...
+    </div>
+  );
+
+  if (!oturum) return <GirisEkrani onGiris={() => veriYukle()} />;
+
+  if (yukleniyor) return (
+    <div style={{ minHeight: "100vh", background: "#0a0f1e", display: "flex", alignItems: "center", justifyContent: "center", color: "#60a5fa", fontSize: 18 }}>
+      ⏳ Veriler yükleniyor...
+    </div>
+  );
+
+  return (
+    <div style={{ minHeight: "100vh", background: "#0a0f1e", fontFamily: "'Segoe UI', system-ui, sans-serif", color: "#e2e8f0" }}>
+      <div style={{ background: "#0f172a", borderBottom: "1px solid #1e293b", padding: "0 24px" }}>
+        <div style={{ maxWidth: 1400, margin: "0 auto", display: "flex", alignItems: "center", height: 60, gap: 24 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 9, background: "linear-gradient(135deg,#2563eb,#1d4ed8)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🛡️</div>
+            <div>
+              <div style={{ fontWeight: 800, fontSize: 15, color: "#f9fafb" }}>İSG Takip Sistemi</div>
+              <div style={{ fontSize: 10, color: "#475569" }}>Eğitim · Muayene · Sertifika</div>
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 2 }}>
+            {[["dashboard","📊 Dashboard"],["personel","👷 Personel"],["rapor","📋 Raporlar"]].map(([id, label]) => (
+              <button key={id} onClick={() => setSayfa(id)} style={{ padding: "8px 16px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, background: sayfa === id ? "#1d4ed8" : "transparent", color: sayfa === id ? "#fff" : "#6b7280" }}>{label}</button>
+            ))}
+          </div>
+          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ fontSize: 12, color: "#475569" }}>{oturum?.user?.email}</span>
+            <Btn onClick={cikisYap} variant="danger" style={{ fontSize: 12, padding: "6px 12px" }}>Çıkış</Btn>
+          </div>
+        </div>
+      </div>
+      <div style={{ maxWidth: 1400, margin: "0 auto", padding: 24 }}>
+        {sayfa === "dashboard" && <Dashboard />}
+        {sayfa === "personel"  && <PersonelSayfa />}
+        {sayfa === "rapor"     && <RaporSayfa />}
+      </div>
+      {modal === "firma-ekle"        && <FirmaEkleModal />}
+      {modal === "personel-guncelle" && <PersonelGuncelleModal />}
+      {secPersonel && <PersonelDetay p={secPersonel} />}
+    </div>
+  );
+}
