@@ -415,10 +415,11 @@ export default function App() {
                 </div>
                 <Badge d={d} />
               </div>
-              <div style={{ display: "flex", gap: 8 }}>
-                <input type="date" defaultValue={bugun()} onChange={ev => setTarihler(t => ({ ...t, [e.id]: ev.target.value }))}
-                  style={{ flex: 1, padding: "7px 12px", background: "#0f172a", border: "1px solid #374151", borderRadius: 7, color: "#e5e7eb", fontSize: 13 }} />
-                <Btn variant="success" style={{ padding: "7px 14px" }} onClick={() => tarihler[e.id] && egitimKaydet(p.id, e.id, tarihler[e.id])}>Kaydet</Btn>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <input type="date" value={tarihler[e.id] || ""} onChange={ev => setTarihler(t => ({ ...t, [e.id]: ev.target.value }))}
+                  placeholder="Tarih seçin"
+                  style={{ flex: 1, padding: "7px 12px", background: "#0f172a", border: "1px solid #374151", borderRadius: 7, color: tarihler[e.id] ? "#e5e7eb" : "#6b7280", fontSize: 13 }} />
+                <Btn variant="success" style={{ padding: "7px 14px", opacity: tarihler[e.id] ? 1 : 0.4 }} disabled={!tarihler[e.id]} onClick={() => egitimKaydet(p.id, e.id, tarihler[e.id])}>Kaydet</Btn>
               </div>
             </div>
           );
@@ -437,10 +438,10 @@ export default function App() {
                 </div>
                 {periyot && <Badge d={d} />}
               </div>
-              <div style={{ display: "flex", gap: 8 }}>
-                <input type="date" defaultValue={bugun()} onChange={ev => setTarihler(t => ({ ...t, [`m_${m.id}`]: ev.target.value }))}
-                  style={{ flex: 1, padding: "7px 12px", background: "#0f172a", border: "1px solid #374151", borderRadius: 7, color: "#e5e7eb", fontSize: 13 }} />
-                <Btn variant="success" style={{ padding: "7px 14px" }} onClick={() => tarihler[`m_${m.id}`] && muayeneKaydet(p.id, m.id, tarihler[`m_${m.id}`])}>Kaydet</Btn>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <input type="date" value={tarihler[`m_${m.id}`] || ""} onChange={ev => setTarihler(t => ({ ...t, [`m_${m.id}`]: ev.target.value }))}
+                  style={{ flex: 1, padding: "7px 12px", background: "#0f172a", border: "1px solid #374151", borderRadius: 7, color: tarihler[`m_${m.id}`] ? "#e5e7eb" : "#6b7280", fontSize: 13 }} />
+                <Btn variant="success" style={{ padding: "7px 14px", opacity: tarihler[`m_${m.id}`] ? 1 : 0.4 }} disabled={!tarihler[`m_${m.id}`]} onClick={() => muayeneKaydet(p.id, m.id, tarihler[`m_${m.id}`])}>Kaydet</Btn>
               </div>
             </div>
           );
@@ -458,10 +459,10 @@ export default function App() {
                 </div>
                 {son && <Badge d={d} />}
               </div>
-              <div style={{ display: "flex", gap: 8 }}>
-                <input type="date" defaultValue={bugun()} onChange={ev => setTarihler(t => ({ ...t, [`s_${s.id}`]: ev.target.value }))}
-                  style={{ flex: 1, padding: "7px 12px", background: "#0f172a", border: "1px solid #374151", borderRadius: 7, color: "#e5e7eb", fontSize: 13 }} />
-                <Btn variant="success" style={{ padding: "7px 14px" }} onClick={() => tarihler[`s_${s.id}`] && sertifikaKaydet(p.id, s.id, tarihler[`s_${s.id}`])}>Kaydet</Btn>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <input type="date" value={tarihler[`s_${s.id}`] || ""} onChange={ev => setTarihler(t => ({ ...t, [`s_${s.id}`]: ev.target.value }))}
+                  style={{ flex: 1, padding: "7px 12px", background: "#0f172a", border: "1px solid #374151", borderRadius: 7, color: tarihler[`s_${s.id}`] ? "#e5e7eb" : "#6b7280", fontSize: 13 }} />
+                <Btn variant="success" style={{ padding: "7px 14px", opacity: tarihler[`s_${s.id}`] ? 1 : 0.4 }} disabled={!tarihler[`s_${s.id}`]} onClick={() => sertifikaKaydet(p.id, s.id, tarihler[`s_${s.id}`])}>Kaydet</Btn>
               </div>
             </div>
           );
