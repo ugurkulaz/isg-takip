@@ -30,57 +30,57 @@ const sonrakiTarih = (baslangic, ayEkle) => {
   return d.toISOString().split("T")[0];
 };
 const durumHesapla = (sonTarih, periyot, eksikLabel = "Eğitim Eksik") => {
-  if (!sonTarih || !periyot) return { label: eksikLabel, renk: "#dc2626", bg: "#fee2e2", onc: 5 };
+  if (!sonTarih || !periyot) return { label: eksikLabel, renk: "#e74c3c", bg: "#fdedec", onc: 5 };
   const sonraki = sonrakiTarih(sonTarih, periyot);
   const gun = gunFarki(sonraki);
-  if (gun < 0)   return { label: "Süresi Dolmuş", renk: "#dc2626", bg: "#fee2e2", onc: 4 };
-  if (gun <= 30)  return { label: "Kritik",         renk: "#ea580c", bg: "#ffedd5", onc: 3 };
-  if (gun <= 90)  return { label: "Yaklaşıyor",     renk: "#d97706", bg: "#fef3c7", onc: 2 };
-  return               { label: "Güncel",           renk: "#16a34a", bg: "#dcfce7", onc: 1 };
+  if (gun < 0)   return { label: "Süresi Dolmuş", renk: "#e74c3c", bg: "#fdedec", onc: 4 };
+  if (gun <= 30)  return { label: "Kritik",         renk: "#e67e22", bg: "#fdf2e9", onc: 3 };
+  if (gun <= 90)  return { label: "Yaklaşıyor",     renk: "#d4ac0d", bg: "#fef9e7", onc: 2 };
+  return               { label: "Güncel",           renk: "#27ae60", bg: "#eafaf1", onc: 1 };
 };
 
 // ─── UI BİLEŞENLERİ ──────────────────────────────────────────────────────────
 const Badge = ({ d, tarih }) => (
   <div style={{ textAlign: "center", minWidth: 90 }}>
     <span style={{ background: d.bg, color: d.renk, borderRadius: 6, padding: "3px 10px", fontSize: 12, fontWeight: 700, display: "inline-block" }}>{d.label}</span>
-    {tarih && <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 3 }}>{formatTarih(tarih)}</div>}
+    {tarih && <div style={{ fontSize: 11, color: "#ADB5BD", marginTop: 3 }}>{formatTarih(tarih)}</div>}
   </div>
 );
 const Btn = ({ children, onClick, variant = "primary", style = {}, disabled = false, type = "button" }) => (
   <button type={type} onClick={onClick} disabled={disabled} style={{
     padding: "8px 16px", borderRadius: 8, border: "none", cursor: disabled ? "not-allowed" : "pointer",
     fontSize: 13, fontWeight: 600, opacity: disabled ? 0.5 : 1,
-    background: variant === "primary" ? "#2563eb" : variant === "danger" ? "#dc2626" : variant === "success" ? "#16a34a" : "#e2e8f0",
-    color: variant === "secondary" ? "#374151" : "#fff", ...style
+    background: variant === "primary" ? "#233142" : variant === "danger" ? "#e74c3c" : variant === "success" ? "#2ecc71" : "#ecf0f1",
+    color: variant === "secondary" ? "#454545" : "#fff", ...style
   }}>{children}</button>
 );
 const Card = ({ children, style = {} }) => (
-  <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 14, overflow: "hidden", boxShadow: "0 1px 4px #0000000a", ...style }}>{children}</div>
+  <div style={{ background: "#ffffff", border: "1px solid #dde3e0", borderRadius: 10, overflow: "hidden", boxShadow: "0 1px 4px #0000000a", ...style }}>{children}</div>
 );
 const CardHeader = ({ title, right }) => (
-  <div style={{ padding: "14px 20px", borderBottom: "1px solid #e2e8f0", display: "flex", alignItems: "center", justifyContent: "space-between", background: "#f8fafc" }}>
-    <span style={{ fontWeight: 700, color: "#1e293b", fontSize: 15 }}>{title}</span>
+  <div style={{ padding: "14px 20px", borderBottom: "1px solid #dde3e0", display: "flex", alignItems: "center", justifyContent: "space-between", background: "#F4F7F6" }}>
+    <span style={{ fontWeight: 700, color: "#454545", fontSize: 15 }}>{title}</span>
     {right}
   </div>
 );
 const Input = ({ label, ...props }) => (
   <div style={{ marginBottom: 14 }}>
-    {label && <label style={{ display: "block", fontSize: 13, color: "#475569", marginBottom: 5 }}>{label}</label>}
-    <input {...props} style={{ width: "100%", padding: "10px 14px", background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: 8, color: "#1e293b", fontSize: 14, boxSizing: "border-box" }} />
+    {label && <label style={{ display: "block", fontSize: 13, color: "#454545", marginBottom: 5 }}>{label}</label>}
+    <input {...props} style={{ width: "100%", padding: "10px 14px", background: "#F4F7F6", border: "1px solid #dde3e0", borderRadius: 8, color: "#454545", fontSize: 14, boxSizing: "border-box" }} />
   </div>
 );
 const Select = ({ label, children, ...props }) => (
   <div style={{ marginBottom: 14 }}>
-    {label && <label style={{ display: "block", fontSize: 13, color: "#475569", marginBottom: 5 }}>{label}</label>}
-    <select {...props} style={{ width: "100%", padding: "10px 14px", background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: 8, color: "#1e293b", fontSize: 14 }}>{children}</select>
+    {label && <label style={{ display: "block", fontSize: 13, color: "#454545", marginBottom: 5 }}>{label}</label>}
+    <select {...props} style={{ width: "100%", padding: "10px 14px", background: "#F4F7F6", border: "1px solid #dde3e0", borderRadius: 8, color: "#454545", fontSize: 14 }}>{children}</select>
   </div>
 );
 const Modal = ({ children, onClose, title, width = 500 }) => (
   <div style={{ position: "fixed", inset: 0, background: "#0006", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center" }}>
-    <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 16, width, maxHeight: "90vh", overflowY: "auto", padding: 28, boxShadow: "0 20px 60px #0000002a" }}>
+    <div style={{ background: "#ffffff", border: "1px solid #dde3e0", borderRadius: 10, width, maxHeight: "90vh", overflowY: "auto", padding: 28, boxShadow: "0 20px 60px #0000002a" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-        <span style={{ fontWeight: 800, fontSize: 18, color: "#1e293b" }}>{title}</span>
-        <button onClick={onClose} style={{ background: "#f1f5f9", border: "none", color: "#64748b", borderRadius: 8, padding: "4px 10px", cursor: "pointer", fontSize: 18 }}>✕</button>
+        <span style={{ fontWeight: 800, fontSize: 18, color: "#454545" }}>{title}</span>
+        <button onClick={onClose} style={{ background: "#F4F7F6", border: "none", color: "#ADB5BD", borderRadius: 8, padding: "4px 10px", cursor: "pointer", fontSize: 18 }}>✕</button>
       </div>
       {children}
     </div>
@@ -108,47 +108,47 @@ const GirisEkrani = ({ onGiris }) => {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(135deg,#1e40af,#2563eb)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Segoe UI', system-ui, sans-serif" }}>
+    <div style={{ minHeight: "100vh", background: "#233142", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Segoe UI', system-ui, sans-serif" }}>
       <div style={{ width: 400 }}>
         {/* Logo */}
         <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <div style={{ width: 64, height: 64, borderRadius: 16, background: "rgba(255,255,255,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, margin: "0 auto 16px" }}>🛡️</div>
+          <div style={{ width: 64, height: 64, borderRadius: 10, background: "rgba(255,255,255,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 32, margin: "0 auto 16px" }}>🛡️</div>
           <div style={{ fontWeight: 800, fontSize: 24, color: "#ffffff" }}>İSG Takip Sistemi</div>
-          <div style={{ fontSize: 14, color: "#bfdbfe", marginTop: 4 }}>İş Sağlığı & Güvenliği Yönetimi</div>
+          <div style={{ fontSize: 14, color: "#ADB5BD", marginTop: 4 }}>İş Sağlığı & Güvenliği Yönetimi</div>
         </div>
 
         {/* Form */}
-        <div style={{ background: "#ffffff", border: "none", borderRadius: 16, padding: 32, boxShadow: "0 20px 60px #00000033" }}>
-          <div style={{ fontWeight: 700, fontSize: 18, color: "#1e293b", marginBottom: 24 }}>Giriş Yap</div>
+        <div style={{ background: "#ffffff", border: "none", borderRadius: 10, padding: 32, boxShadow: "0 20px 60px #00000033" }}>
+          <div style={{ fontWeight: 700, fontSize: 18, color: "#454545", marginBottom: 24 }}>Giriş Yap</div>
 
           <form onSubmit={girisYap}>
             <div style={{ marginBottom: 16 }}>
-              <label style={{ display: "block", fontSize: 13, color: "#475569", marginBottom: 6 }}>E-posta</label>
+              <label style={{ display: "block", fontSize: 13, color: "#454545", marginBottom: 6 }}>E-posta</label>
               <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="ornek@sirket.com" required
-                style={{ width: "100%", padding: "12px 14px", background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: 8, color: "#1e293b", fontSize: 14, boxSizing: "border-box" }} />
+                style={{ width: "100%", padding: "12px 14px", background: "#F4F7F6", border: "1px solid #dde3e0", borderRadius: 8, color: "#454545", fontSize: 14, boxSizing: "border-box" }} />
             </div>
             <div style={{ marginBottom: 24 }}>
-              <label style={{ display: "block", fontSize: 13, color: "#475569", marginBottom: 6 }}>Şifre</label>
+              <label style={{ display: "block", fontSize: 13, color: "#454545", marginBottom: 6 }}>Şifre</label>
               <input type="password" value={sifre} onChange={e => setSifre(e.target.value)} placeholder="••••••••" required
-                style={{ width: "100%", padding: "12px 14px", background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: 8, color: "#1e293b", fontSize: 14, boxSizing: "border-box" }} />
+                style={{ width: "100%", padding: "12px 14px", background: "#F4F7F6", border: "1px solid #dde3e0", borderRadius: 8, color: "#454545", fontSize: 14, boxSizing: "border-box" }} />
             </div>
 
             {hata && (
-              <div style={{ background: "#fee2e2", border: "1px solid #fca5a5", borderRadius: 8, padding: "10px 14px", color: "#dc2626", fontSize: 13, marginBottom: 16 }}>
+              <div style={{ background: "#fdedec", border: "1px solid #f5b7b1", borderRadius: 8, padding: "10px 14px", color: "#e74c3c", fontSize: 13, marginBottom: 16 }}>
                 ⚠️ {hata}
               </div>
             )}
 
             <button type="submit" disabled={yukleniyor} style={{
               width: "100%", padding: "12px", borderRadius: 8, border: "none", cursor: yukleniyor ? "not-allowed" : "pointer",
-              background: "#2563eb", color: "#fff", fontSize: 15, fontWeight: 700, opacity: yukleniyor ? 0.7 : 1
+              background: "#233142", color: "#fff", fontSize: 15, fontWeight: 700, opacity: yukleniyor ? 0.7 : 1
             }}>
               {yukleniyor ? "Giriş yapılıyor..." : "Giriş Yap"}
             </button>
           </form>
         </div>
 
-        <div style={{ textAlign: "center", marginTop: 16, fontSize: 12, color: "#bfdbfe" }}>
+        <div style={{ textAlign: "center", marginTop: 16, fontSize: 12, color: "#ADB5BD" }}>
           © 2025 İSG Takip Sistemi · Güvenli Bağlantı 🔒
         </div>
       </div>
@@ -424,8 +424,8 @@ export default function App() {
         <Select label="Tehlike Sınıfı" value={form.tehlike_sinifi} onChange={e => setForm(f => ({ ...f, tehlike_sinifi: e.target.value }))}>
           {Object.keys(TEHLIKE).map(k => <option key={k}>{k}</option>)}
         </Select>
-        <div style={{ padding: "12px 16px", background: "#f8fafc", borderRadius: 8, fontSize: 12, color: "#94a3b8", marginBottom: 16 }}>
-          {TEHLIKE[form.tehlike_sinifi]?.icon} Eğitim periyodu: Her <strong style={{ color: "#2563eb" }}>{TEHLIKE[form.tehlike_sinifi]?.sure} ayda</strong> bir
+        <div style={{ padding: "12px 16px", background: "#F4F7F6", borderRadius: 8, fontSize: 12, color: "#ADB5BD", marginBottom: 16 }}>
+          {TEHLIKE[form.tehlike_sinifi]?.icon} Eğitim periyodu: Her <strong style={{ color: "#233142" }}>{TEHLIKE[form.tehlike_sinifi]?.sure} ayda</strong> bir
         </div>
         <div style={{ display: "flex", gap: 10 }}>
           <Btn onClick={() => setModal(null)} variant="secondary" style={{ flex: 1 }}>İptal</Btn>
@@ -465,13 +465,13 @@ export default function App() {
 
   const ImportModal = () => (
     <Modal title="📥 Aylık Personel Listesi Güncelle" onClose={() => { setModal(null); setKarsilastirSonuc(null); setImportMetin(""); }} width={580}>
-      <div style={{ fontSize: 13, color: "#94a3b8", marginBottom: 16 }}>Yeni listeyi yükleyin. Çıkanlar pasife alınır, yeniler eklenir.</div>
+      <div style={{ fontSize: 13, color: "#ADB5BD", marginBottom: 16 }}>Yeni listeyi yükleyin. Çıkanlar pasife alınır, yeniler eklenir.</div>
       <Select label="Firma" value={secFirma?.id || ""} onChange={e => setSecFirma(firmalar.find(f => f.id === Number(e.target.value)))}>
         <option value="">-- Firma Seçin --</option>
         {firmalar.map(f => <option key={f.id} value={f.id}>{f.ad}</option>)}
       </Select>
       <div style={{ marginBottom: 14 }}>
-        <label style={{ display: "block", fontSize: 13, color: "#64748b", marginBottom: 6 }}>CSV Dosyası <span style={{ color: "#94a3b8" }}>(TC No, Ad Soyad, Görev)</span></label>
+        <label style={{ display: "block", fontSize: 13, color: "#ADB5BD", marginBottom: 6 }}>CSV Dosyası <span style={{ color: "#ADB5BD" }}>(TC No, Ad Soyad, Görev)</span></label>
         <input ref={dosyaRef} type="file" accept=".csv,.txt" onChange={e => {
           const file = e.target.files[0];
           if (file) { const r = new FileReader(); r.onload = ev => setImportMetin(ev.target.result); r.readAsText(file, "UTF-8"); }
@@ -479,25 +479,25 @@ export default function App() {
         <Btn onClick={() => dosyaRef.current.click()} variant="secondary">📁 Dosya Seç</Btn>
       </div>
       <div style={{ marginBottom: 14 }}>
-        <label style={{ display: "block", fontSize: 13, color: "#64748b", marginBottom: 6 }}>veya yapıştırın</label>
-        <div style={{ fontSize: 12, color: "#475569", marginBottom: 6 }}>Format: <span style={{ color: "#2563eb", fontFamily: "monospace" }}>TC No · Ad Soyad · Görev · İşe Giriş Tarihi</span> (Tab veya virgülle ayrılmış)</div>
+        <label style={{ display: "block", fontSize: 13, color: "#ADB5BD", marginBottom: 6 }}>veya yapıştırın</label>
+        <div style={{ fontSize: 12, color: "#454545", marginBottom: 6 }}>Format: <span style={{ color: "#233142", fontFamily: "monospace" }}>TC No · Ad Soyad · Görev · İşe Giriş Tarihi</span> (Tab veya virgülle ayrılmış)</div>
         <textarea value={importMetin} onChange={e => setImportMetin(e.target.value)} rows={6}
           placeholder={"TC No\tAd Soyad\tGörev\tİşe Giriş\n12345678901\tAhmet Yılmaz\tOperatör\t15.06.2023\n98765432101\tAyşe Kaya\tMühendis\t01.03.2024"}
-          style={{ width: "100%", padding: "10px 14px", background: "#ffffff", border: "1px solid #cbd5e1", borderRadius: 8, color: "#374151", fontSize: 13, resize: "vertical", boxSizing: "border-box", fontFamily: "monospace" }} />
+          style={{ width: "100%", padding: "10px 14px", background: "#ffffff", border: "1px solid #dde3e0", borderRadius: 8, color: "#454545", fontSize: 13, resize: "vertical", boxSizing: "border-box", fontFamily: "monospace" }} />
       </div>
       {karsilastirSonuc && (
         <div style={{ background: "#ffffff", borderRadius: 10, padding: 16, marginBottom: 16 }}>
-          <div style={{ fontWeight: 700, color: "#1e293b", marginBottom: 12 }}>📊 Karşılaştırma Sonucu</div>
+          <div style={{ fontWeight: 700, color: "#454545", marginBottom: 12 }}>📊 Karşılaştırma Sonucu</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
-            <div style={{ background: "#fee2e2", borderRadius: 8, padding: 12 }}>
-              <div style={{ color: "#dc2626", fontWeight: 700, marginBottom: 6 }}>🚪 Çıkan ({karsilastirSonuc.cikmis.length})</div>
-              {karsilastirSonuc.cikmis.map(c => <div key={c.id} style={{ fontSize: 12, color: "#dc2626" }}>{c.ad_soyad}</div>)}
-              {!karsilastirSonuc.cikmis.length && <div style={{ fontSize: 12, color: "#94a3b8" }}>Çıkan yok</div>}
+            <div style={{ background: "#fdedec", borderRadius: 8, padding: 12 }}>
+              <div style={{ color: "#e74c3c", fontWeight: 700, marginBottom: 6 }}>🚪 Çıkan ({karsilastirSonuc.cikmis.length})</div>
+              {karsilastirSonuc.cikmis.map(c => <div key={c.id} style={{ fontSize: 12, color: "#e74c3c" }}>{c.ad_soyad}</div>)}
+              {!karsilastirSonuc.cikmis.length && <div style={{ fontSize: 12, color: "#ADB5BD" }}>Çıkan yok</div>}
             </div>
             <div style={{ background: "#052e16", borderRadius: 8, padding: 12 }}>
-              <div style={{ color: "#16a34a", fontWeight: 700, marginBottom: 6 }}>🆕 Yeni ({karsilastirSonuc.gelen.length})</div>
+              <div style={{ color: "#27ae60", fontWeight: 700, marginBottom: 6 }}>🆕 Yeni ({karsilastirSonuc.gelen.length})</div>
               {karsilastirSonuc.gelen.map((g, i) => <div key={i} style={{ fontSize: 12, color: "#86efac" }}>{g.ad}</div>)}
-              {!karsilastirSonuc.gelen.length && <div style={{ fontSize: 12, color: "#94a3b8" }}>Yeni yok</div>}
+              {!karsilastirSonuc.gelen.length && <div style={{ fontSize: 12, color: "#ADB5BD" }}>Yeni yok</div>}
             </div>
           </div>
           <Btn onClick={karsilastirUygula} variant="success" style={{ width: "100%" }}>✅ Değişiklikleri Uygula</Btn>
@@ -532,12 +532,12 @@ export default function App() {
     };
     return (
       <Modal title={p.ad_soyad} onClose={() => setSecPersonel(null)} width={640}>
-        <div style={{ fontSize: 13, color: "#94a3b8", marginBottom: 16 }}>
+        <div style={{ fontSize: 13, color: "#ADB5BD", marginBottom: 16 }}>
           {p.gorev} · {firma?.ad} · TC: {p.tc_no} · İşe Giriş: {formatTarih(p.ise_giris)}
         </div>
-        <div style={{ display: "flex", gap: 4, marginBottom: 20, background: "#e2e8f0", borderRadius: 10, padding: 4 }}>
+        <div style={{ display: "flex", gap: 4, marginBottom: 20, background: "#ecf0f1", borderRadius: 10, padding: 4 }}>
           {[["egitim","🛡️ Eğitimler"],["muayene","🩺 Muayeneler"],["sertifika","📜 Sertifikalar"]].map(([id, label]) => (
-            <button key={id} onClick={() => setAktifTab(id)} style={{ flex: 1, padding: "8px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, background: aktifTab === id ? "#2563eb" : "transparent", color: aktifTab === id ? "#fff" : "#6b7280" }}>{label}</button>
+            <button key={id} onClick={() => setAktifTab(id)} style={{ flex: 1, padding: "8px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, background: aktifTab === id ? "#233142" : "transparent", color: aktifTab === id ? "#fff" : "#6b7280" }}>{label}</button>
           ))}
         </div>
         {aktifTab === "egitim" && egitimTurleri.map(e => {
@@ -546,31 +546,31 @@ export default function App() {
           const son = tumKayitlar[0]?.egitim_tarihi || null;
           const d = durumHesapla(son, periyot, "Eğitim Eksik");
           return (
-            <div key={e.id} style={{ background: "#ffffff", borderRadius: 10, padding: 14, marginBottom: 10, border: "1px solid #e2e8f0" }}>
+            <div key={e.id} style={{ background: "#ffffff", borderRadius: 10, padding: 14, marginBottom: 10, border: "1px solid #dde3e0" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
                 <span style={{ fontSize: 18 }}>{e.icon}</span>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600, color: "#1e293b" }}>{e.ad}</div>
-                  <div style={{ fontSize: 12, color: "#94a3b8" }}>Sonraki: {formatTarih(sonrakiTarih(son, periyot))}</div>
+                  <div style={{ fontWeight: 600, color: "#233142" }}>{e.ad}</div>
+                  <div style={{ fontSize: 12, color: "#ADB5BD" }}>Sonraki: {formatTarih(sonrakiTarih(son, periyot))}</div>
                 </div>
                 <Badge d={d} tarih={son} />
               </div>
               <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: tumKayitlar.length > 0 ? 8 : 0 }}>
                 <input type="date" value={tarihler[e.id] || ""} onChange={ev => setTarihler(t => ({ ...t, [e.id]: ev.target.value }))}
-                  style={{ flex: 1, padding: "7px 12px", background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: 7, color: tarihler[e.id] ? "#e5e7eb" : "#6b7280", fontSize: 13 }} />
+                  style={{ flex: 1, padding: "7px 12px", background: "#F4F7F6", border: "1px solid #dde3e0", borderRadius: 7, color: tarihler[e.id] ? "#e5e7eb" : "#6b7280", fontSize: 13 }} />
                 <Btn variant="success" style={{ padding: "7px 14px", opacity: tarihler[e.id] ? 1 : 0.4 }} disabled={!tarihler[e.id]} onClick={() => { egitimKaydet(p.id, e.id, tarihler[e.id]); setTarihler(t => ({ ...t, [e.id]: "" })); }}>Kaydet</Btn>
               </div>
               {tumKayitlar.length > 0 && (
                 <div>
-                  <button onClick={() => setGecmisAc(g => ({ ...g, [e.id]: !g[e.id] }))} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: 12, cursor: "pointer", padding: "2px 0" }}>
+                  <button onClick={() => setGecmisAc(g => ({ ...g, [e.id]: !g[e.id] }))} style={{ background: "none", border: "none", color: "#ADB5BD", fontSize: 12, cursor: "pointer", padding: "2px 0" }}>
                     {gecmisAc[e.id] ? "▲ Geçmişi gizle" : `▼ Geçmiş kayıtlar (${tumKayitlar.length})`}
                   </button>
                   {gecmisAc[e.id] && (
-                    <div style={{ marginTop: 8, borderTop: "1px solid #e2e8f0", paddingTop: 8 }}>
+                    <div style={{ marginTop: 8, borderTop: "1px solid #dde3e0", paddingTop: 8 }}>
                       {tumKayitlar.map((k, i) => (
                         <div key={k.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "5px 0", borderBottom: i < tumKayitlar.length-1 ? "1px solid #1f2937" : "none" }}>
                           <span style={{ fontSize: 13, color: i === 0 ? "#4ade80" : "#9ca3af" }}>{i === 0 ? "✅ " : "  "}{formatTarih(k.egitim_tarihi)}</span>
-                          <button onClick={() => egitimSil(k.id)} style={{ background: "#fee2e2", border: "1px solid #fca5a5", color: "#dc2626", borderRadius: 6, padding: "3px 8px", cursor: "pointer", fontSize: 12 }}>Sil</button>
+                          <button onClick={() => egitimSil(k.id)} style={{ background: "#fdedec", border: "1px solid #f5b7b1", color: "#e74c3c", borderRadius: 6, padding: "3px 8px", cursor: "pointer", fontSize: 12 }}>Sil</button>
                         </div>
                       ))}
                     </div>
@@ -586,32 +586,32 @@ export default function App() {
           const son = tumKayitlar[0]?.muayene_tarihi || null;
           const d = durumHesapla(son, periyot, "Muayene Eksik");
           return (
-            <div key={m.id} style={{ background: "#ffffff", borderRadius: 10, padding: 14, marginBottom: 10, border: "1px solid #e2e8f0" }}>
+            <div key={m.id} style={{ background: "#ffffff", borderRadius: 10, padding: 14, marginBottom: 10, border: "1px solid #dde3e0" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
                 <span style={{ fontSize: 18 }}>{m.icon}</span>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600, color: "#1e293b" }}>{m.ad}</div>
-                  <div style={{ fontSize: 12, color: "#94a3b8" }}>{periyot ? `Sonraki: ${formatTarih(sonrakiTarih(son, periyot))}` : "Tek seferlik"}</div>
+                  <div style={{ fontWeight: 600, color: "#233142" }}>{m.ad}</div>
+                  <div style={{ fontSize: 12, color: "#ADB5BD" }}>{periyot ? `Sonraki: ${formatTarih(sonrakiTarih(son, periyot))}` : "Tek seferlik"}</div>
                 </div>
                 {periyot && <Badge d={d} tarih={son} />}
-                {!periyot && son && <span style={{ fontSize: 12, color: "#16a34a" }}>✅ {formatTarih(son)}</span>}
+                {!periyot && son && <span style={{ fontSize: 12, color: "#27ae60" }}>✅ {formatTarih(son)}</span>}
               </div>
               <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: tumKayitlar.length > 0 ? 8 : 0 }}>
                 <input type="date" value={tarihler[`m_${m.id}`] || ""} onChange={ev => setTarihler(t => ({ ...t, [`m_${m.id}`]: ev.target.value }))}
-                  style={{ flex: 1, padding: "7px 12px", background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: 7, color: tarihler[`m_${m.id}`] ? "#e5e7eb" : "#6b7280", fontSize: 13 }} />
+                  style={{ flex: 1, padding: "7px 12px", background: "#F4F7F6", border: "1px solid #dde3e0", borderRadius: 7, color: tarihler[`m_${m.id}`] ? "#e5e7eb" : "#6b7280", fontSize: 13 }} />
                 <Btn variant="success" style={{ padding: "7px 14px", opacity: tarihler[`m_${m.id}`] ? 1 : 0.4 }} disabled={!tarihler[`m_${m.id}`]} onClick={() => { muayeneKaydet(p.id, m.id, tarihler[`m_${m.id}`]); setTarihler(t => ({ ...t, [`m_${m.id}`]: "" })); }}>Kaydet</Btn>
               </div>
               {tumKayitlar.length > 0 && (
                 <div>
-                  <button onClick={() => setGecmisAc(g => ({ ...g, [`m_${m.id}`]: !g[`m_${m.id}`] }))} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: 12, cursor: "pointer", padding: "2px 0" }}>
+                  <button onClick={() => setGecmisAc(g => ({ ...g, [`m_${m.id}`]: !g[`m_${m.id}`] }))} style={{ background: "none", border: "none", color: "#ADB5BD", fontSize: 12, cursor: "pointer", padding: "2px 0" }}>
                     {gecmisAc[`m_${m.id}`] ? "▲ Geçmişi gizle" : `▼ Geçmiş kayıtlar (${tumKayitlar.length})`}
                   </button>
                   {gecmisAc[`m_${m.id}`] && (
-                    <div style={{ marginTop: 8, borderTop: "1px solid #e2e8f0", paddingTop: 8 }}>
+                    <div style={{ marginTop: 8, borderTop: "1px solid #dde3e0", paddingTop: 8 }}>
                       {tumKayitlar.map((k, i) => (
                         <div key={k.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "5px 0", borderBottom: i < tumKayitlar.length-1 ? "1px solid #1f2937" : "none" }}>
                           <span style={{ fontSize: 13, color: i === 0 ? "#4ade80" : "#9ca3af" }}>{i === 0 ? "✅ " : "  "}{formatTarih(k.muayene_tarihi)}</span>
-                          <button onClick={() => muayeneSil(k.id)} style={{ background: "#fee2e2", border: "1px solid #fca5a5", color: "#dc2626", borderRadius: 6, padding: "3px 8px", cursor: "pointer", fontSize: 12 }}>Sil</button>
+                          <button onClick={() => muayeneSil(k.id)} style={{ background: "#fdedec", border: "1px solid #f5b7b1", color: "#e74c3c", borderRadius: 6, padding: "3px 8px", cursor: "pointer", fontSize: 12 }}>Sil</button>
                         </div>
                       ))}
                     </div>
@@ -626,31 +626,31 @@ export default function App() {
           const son = tumKayitlar[0]?.verilis_tarihi || null;
           const d = durumHesapla(son, s.periyot, "Sertifika Eksik");
           return (
-            <div key={s.id} style={{ background: "#ffffff", borderRadius: 10, padding: 14, marginBottom: 10, border: "1px solid #e2e8f0" }}>
+            <div key={s.id} style={{ background: "#ffffff", borderRadius: 10, padding: 14, marginBottom: 10, border: "1px solid #dde3e0" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
                 <span style={{ fontSize: 18 }}>{s.icon}</span>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600, color: "#1e293b" }}>{s.ad}</div>
-                  <div style={{ fontSize: 12, color: "#94a3b8" }}>Periyot: {s.periyot} ay{son ? ` · Sonraki: ${formatTarih(sonrakiTarih(son, s.periyot))}` : ""}</div>
+                  <div style={{ fontWeight: 600, color: "#233142" }}>{s.ad}</div>
+                  <div style={{ fontSize: 12, color: "#ADB5BD" }}>Periyot: {s.periyot} ay{son ? ` · Sonraki: ${formatTarih(sonrakiTarih(son, s.periyot))}` : ""}</div>
                 </div>
                 {son && <Badge d={d} tarih={son} />}
               </div>
               <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: tumKayitlar.length > 0 ? 8 : 0 }}>
                 <input type="date" value={tarihler[`s_${s.id}`] || ""} onChange={ev => setTarihler(t => ({ ...t, [`s_${s.id}`]: ev.target.value }))}
-                  style={{ flex: 1, padding: "7px 12px", background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: 7, color: tarihler[`s_${s.id}`] ? "#e5e7eb" : "#6b7280", fontSize: 13 }} />
+                  style={{ flex: 1, padding: "7px 12px", background: "#F4F7F6", border: "1px solid #dde3e0", borderRadius: 7, color: tarihler[`s_${s.id}`] ? "#e5e7eb" : "#6b7280", fontSize: 13 }} />
                 <Btn variant="success" style={{ padding: "7px 14px", opacity: tarihler[`s_${s.id}`] ? 1 : 0.4 }} disabled={!tarihler[`s_${s.id}`]} onClick={() => { sertifikaKaydet(p.id, s.id, tarihler[`s_${s.id}`]); setTarihler(t => ({ ...t, [`s_${s.id}`]: "" })); }}>Kaydet</Btn>
               </div>
               {tumKayitlar.length > 0 && (
                 <div>
-                  <button onClick={() => setGecmisAc(g => ({ ...g, [`s_${s.id}`]: !g[`s_${s.id}`] }))} style={{ background: "none", border: "none", color: "#94a3b8", fontSize: 12, cursor: "pointer", padding: "2px 0" }}>
+                  <button onClick={() => setGecmisAc(g => ({ ...g, [`s_${s.id}`]: !g[`s_${s.id}`] }))} style={{ background: "none", border: "none", color: "#ADB5BD", fontSize: 12, cursor: "pointer", padding: "2px 0" }}>
                     {gecmisAc[`s_${s.id}`] ? "▲ Geçmişi gizle" : `▼ Geçmiş kayıtlar (${tumKayitlar.length})`}
                   </button>
                   {gecmisAc[`s_${s.id}`] && (
-                    <div style={{ marginTop: 8, borderTop: "1px solid #e2e8f0", paddingTop: 8 }}>
+                    <div style={{ marginTop: 8, borderTop: "1px solid #dde3e0", paddingTop: 8 }}>
                       {tumKayitlar.map((k, i) => (
                         <div key={k.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "5px 0", borderBottom: i < tumKayitlar.length-1 ? "1px solid #1f2937" : "none" }}>
                           <span style={{ fontSize: 13, color: i === 0 ? "#4ade80" : "#9ca3af" }}>{i === 0 ? "✅ " : "  "}{formatTarih(k.verilis_tarihi)}</span>
-                          <button onClick={() => sertifikaSil(k.id)} style={{ background: "#fee2e2", border: "1px solid #fca5a5", color: "#dc2626", borderRadius: 6, padding: "3px 8px", cursor: "pointer", fontSize: 12 }}>Sil</button>
+                          <button onClick={() => sertifikaSil(k.id)} style={{ background: "#fdedec", border: "1px solid #f5b7b1", color: "#e74c3c", borderRadius: 6, padding: "3px 8px", cursor: "pointer", fontSize: 12 }}>Sil</button>
                         </div>
                       ))}
                     </div>
@@ -670,7 +670,7 @@ export default function App() {
       {bildirimler.map((b, i) => (
         <div key={i} style={{ background: b.tip === "cikis" ? "#1f0707" : "#052e16", border: `1px solid ${b.tip === "cikis" ? "#7f1d1d" : "#14532d"}`, borderRadius: 8, padding: "10px 16px", marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span style={{ color: b.tip === "cikis" ? "#fca5a5" : "#86efac", fontSize: 13 }}>{b.tip === "cikis" ? "⚠️" : "✅"} {b.mesaj}</span>
-          <button onClick={() => setBildirimler(prev => prev.filter((_, j) => j !== i))} style={{ background: "none", border: "none", color: "#94a3b8", cursor: "pointer" }}>✕</button>
+          <button onClick={() => setBildirimler(prev => prev.filter((_, j) => j !== i))} style={{ background: "none", border: "none", color: "#ADB5BD", cursor: "pointer" }}>✕</button>
         </div>
       ))}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 14, marginBottom: 24 }}>
@@ -681,11 +681,11 @@ export default function App() {
           { label: "Yaklaşıyor",     val: genelIstat.yaklasan,  renk: "#fbbf24", icon: "⚠️" },
           { label: "Güncel",         val: genelIstat.guncel,    renk: "#4ade80", icon: "✅" },
         ].map((s, i) => (
-          <div key={i} style={{ background: "#ffffff", borderRadius: 12, padding: "18px 16px", border: "1px solid #e2e8f0", position: "relative", overflow: "hidden" }}>
+          <div key={i} style={{ background: "#ffffff", borderRadius: 12, padding: "18px 16px", border: "1px solid #dde3e0", position: "relative", overflow: "hidden" }}>
             <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, background: s.renk }} />
             <div style={{ fontSize: 22, marginBottom: 6 }}>{s.icon}</div>
             <div style={{ fontSize: 30, fontWeight: 800, color: s.renk }}>{s.val}</div>
-            <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>{s.label}</div>
+            <div style={{ fontSize: 12, color: "#ADB5BD", marginTop: 2 }}>{s.label}</div>
           </div>
         ))}
       </div>
@@ -698,35 +698,35 @@ export default function App() {
         } />
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
-            <tr style={{ background: "#f8fafc" }}>
+            <tr style={{ background: "#F4F7F6" }}>
               {["Firma", "Sektör", "Tehlike", "Personel", "Eğitim", "Sağlık", "Evrak", ""].map(h => (
-                <th key={h} style={{ padding: "11px 16px", textAlign: "left", fontSize: 11, color: "#94a3b8", fontWeight: 700, textTransform: "uppercase" }}>{h}</th>
+                <th key={h} style={{ padding: "11px 16px", textAlign: "left", fontSize: 11, color: "#233142", fontWeight: 700, textTransform: "uppercase" }}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {firmaIstatistik.map((f, i) => (
-              <tr key={f.id} style={{ borderTop: "1px solid #e2e8f0", background: i % 2 === 0 ? "transparent" : "#0f172a22" }}>
-                <td style={{ padding: "13px 16px", fontWeight: 600, color: "#1e293b" }}>{f.ad}</td>
-                <td style={{ padding: "13px 16px", color: "#64748b", fontSize: 13 }}>{f.sektor}</td>
+              <tr key={f.id} style={{ borderTop: "1px solid #dde3e0", background: i % 2 === 0 ? "transparent" : "#F4F7F633" }}>
+                <td style={{ padding: "13px 16px", fontWeight: 600, color: "#233142" }}>{f.ad}</td>
+                <td style={{ padding: "13px 16px", color: "#ADB5BD", fontSize: 13 }}>{f.sektor}</td>
                 <td style={{ padding: "13px 16px" }}>
                   <span style={{ background: f.t?.bg, color: f.t?.renk, borderRadius: 6, padding: "3px 10px", fontSize: 12, fontWeight: 700 }}>{f.t?.icon} {f.tehlike_sinifi}</span>
                 </td>
-                <td style={{ padding: "13px 16px", color: "#94a3b8" }}>👷 {f.personelSay}</td>
+                <td style={{ padding: "13px 16px", color: "#ADB5BD" }}>👷 {f.personelSay}</td>
                 <td style={{ padding: "13px 16px" }}>
                   {f.egitimKritik > 0
-                    ? <span style={{ background: "#fee2e2", color: "#dc2626", borderRadius: 6, padding: "3px 10px", fontSize: 13, fontWeight: 700 }}>🚨 {f.egitimKritik}</span>
-                    : <span style={{ color: "#16a34a", fontSize: 13 }}>✅ Uygun</span>}
+                    ? <span style={{ background: "#fdedec", color: "#e74c3c", borderRadius: 6, padding: "3px 10px", fontSize: 13, fontWeight: 700 }}>🚨 {f.egitimKritik}</span>
+                    : <span style={{ color: "#27ae60", fontSize: 13 }}>✅ Uygun</span>}
                 </td>
                 <td style={{ padding: "13px 16px" }}>
                   {f.muayeneKritik > 0
-                    ? <span style={{ background: "#fee2e2", color: "#dc2626", borderRadius: 6, padding: "3px 10px", fontSize: 13, fontWeight: 700 }}>🚨 {f.muayeneKritik}</span>
-                    : <span style={{ color: "#16a34a", fontSize: 13 }}>✅ Uygun</span>}
+                    ? <span style={{ background: "#fdedec", color: "#e74c3c", borderRadius: 6, padding: "3px 10px", fontSize: 13, fontWeight: 700 }}>🚨 {f.muayeneKritik}</span>
+                    : <span style={{ color: "#27ae60", fontSize: 13 }}>✅ Uygun</span>}
                 </td>
                 <td style={{ padding: "13px 16px" }}>
                   {f.evrakEksik > 0
                     ? <span style={{ background: "#1c1403", color: "#d97706", borderRadius: 6, padding: "3px 10px", fontSize: 13, fontWeight: 700 }}>⚠️ {f.evrakEksik}</span>
-                    : <span style={{ color: "#16a34a", fontSize: 13 }}>✅ Uygun</span>}
+                    : <span style={{ color: "#27ae60", fontSize: 13 }}>✅ Uygun</span>}
                 </td>
                 <td style={{ padding: "13px 16px", display: "flex", gap: 8 }}>
                   <Btn onClick={() => { setSecFirma(f); setSayfa("personel"); }} variant="secondary" style={{ fontSize: 12, padding: "6px 12px" }}>Personel →</Btn>
@@ -735,7 +735,7 @@ export default function App() {
               </tr>
             ))}
             {firmalar.length === 0 && (
-              <tr><td colSpan={6} style={{ padding: 40, textAlign: "center", color: "#94a3b8" }}>Henüz firma yok. "+ Firma Ekle" butonuna tıklayın.</td></tr>
+              <tr><td colSpan={6} style={{ padding: 40, textAlign: "center", color: "#ADB5BD" }}>Henüz firma yok. "+ Firma Ekle" butonuna tıklayın.</td></tr>
             )}
           </tbody>
         </table>
@@ -752,20 +752,20 @@ export default function App() {
       <div>
         <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap" }}>
           <select value={secFirma?.id || ""} onChange={e => setSecFirma(firmalar.find(f => f.id === Number(e.target.value)))}
-            style={{ padding: "10px 14px", background: "#ffffff", border: "1px solid #cbd5e1", borderRadius: 8, color: "#374151", fontSize: 14, minWidth: 220 }}>
+            style={{ padding: "10px 14px", background: "#ffffff", border: "1px solid #dde3e0", borderRadius: 8, color: "#454545", fontSize: 14, minWidth: 220 }}>
             {firmalar.map(f => <option key={f.id} value={f.id}>{f.ad}</option>)}
           </select>
           <input value={aramaP} onChange={e => setAramaP(e.target.value)} placeholder="🔍 İsim veya TC ara..."
-            style={{ flex: 1, minWidth: 200, padding: "10px 14px", background: "#ffffff", border: "1px solid #cbd5e1", borderRadius: 8, color: "#374151", fontSize: 14 }} />
+            style={{ flex: 1, minWidth: 200, padding: "10px 14px", background: "#ffffff", border: "1px solid #dde3e0", borderRadius: 8, color: "#454545", fontSize: 14 }} />
           <Btn onClick={() => setModal("personel-guncelle")}>📥 Personel Güncelle</Btn>
         </div>
         <Card>
           <CardHeader title={`👷 ${firma?.ad || ""} — ${fps.length} aktif personel`} />
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
-              <tr style={{ background: "#f8fafc" }}>
+              <tr style={{ background: "#F4F7F6" }}>
                 {["Ad Soyad", "TC No", "Görev", "İşe Giriş", "İSG Eğitimi", "Periyodik Muayene", ""].map(h => (
-                  <th key={h} style={{ padding: "11px 16px", textAlign: h === "İSG Eğitimi" || h === "Periyodik Muayene" ? "center" : "left", fontSize: 11, color: "#94a3b8", fontWeight: 700, textTransform: "uppercase" }}>{h}</th>
+                  <th key={h} style={{ padding: "11px 16px", textAlign: h === "İSG Eğitimi" || h === "Periyodik Muayene" ? "center" : "left", fontSize: 11, color: "#233142", fontWeight: 700, textTransform: "uppercase" }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -778,11 +778,11 @@ export default function App() {
                 const isgD = durumHesapla(isgTarih, egitimTurleri[0]?.periyotFn(f?.tehlike_sinifi), "Eğitim Eksik");
                 const perD = durumHesapla(perTarih, MUAYENE_TURLERI[0].periyotFn(f?.tehlike_sinifi), "Muayene Eksik");
                 return (
-                  <tr key={p.id} style={{ borderTop: "1px solid #e2e8f0", background: i % 2 === 0 ? "transparent" : "#0f172a22" }}>
-                    <td style={{ padding: "12px 16px", fontWeight: 600, color: "#1e293b" }}>{p.ad_soyad}</td>
-                    <td style={{ padding: "12px 16px", color: "#64748b", fontSize: 12, fontFamily: "monospace" }}>{p.tc_no}</td>
-                    <td style={{ padding: "12px 16px", color: "#94a3b8", fontSize: 13 }}>{p.gorev}</td>
-                    <td style={{ padding: "12px 16px", color: "#64748b", fontSize: 13 }}>{formatTarih(p.ise_giris)}</td>
+                  <tr key={p.id} style={{ borderTop: "1px solid #dde3e0", background: i % 2 === 0 ? "transparent" : "#F4F7F633" }}>
+                    <td style={{ padding: "12px 16px", fontWeight: 600, color: "#233142" }}>{p.ad_soyad}</td>
+                    <td style={{ padding: "12px 16px", color: "#ADB5BD", fontSize: 12, fontFamily: "monospace" }}>{p.tc_no}</td>
+                    <td style={{ padding: "12px 16px", color: "#ADB5BD", fontSize: 13 }}>{p.gorev}</td>
+                    <td style={{ padding: "12px 16px", color: "#ADB5BD", fontSize: 13 }}>{formatTarih(p.ise_giris)}</td>
                     <td style={{ padding: "12px 16px", textAlign: "center" }}><Badge d={isgD} tarih={isgTarih} /></td>
                     <td style={{ padding: "12px 16px", textAlign: "center" }}><Badge d={perD} tarih={perTarih} /></td>
                     <td style={{ padding: "12px 16px" }}>
@@ -792,7 +792,7 @@ export default function App() {
                 );
               })}
               {fps.length === 0 && (
-                <tr><td colSpan={7} style={{ padding: 40, textAlign: "center", color: "#94a3b8" }}>Personel yok. "Personel Güncelle" ile ekleyin.</td></tr>
+                <tr><td colSpan={7} style={{ padding: 40, textAlign: "center", color: "#ADB5BD" }}>Personel yok. "Personel Güncelle" ile ekleyin.</td></tr>
               )}
             </tbody>
           </table>
@@ -825,17 +825,17 @@ export default function App() {
         {/* Firma seç + bilgi */}
         <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap", alignItems: "center" }}>
           <select value={secFirmaId || ""} onChange={e => setSecFirmaId(Number(e.target.value))}
-            style={{ padding: "10px 14px", background: "#ffffff", border: "1px solid #cbd5e1", borderRadius: 8, color: "#374151", fontSize: 14, minWidth: 240 }}>
+            style={{ padding: "10px 14px", background: "#ffffff", border: "1px solid #dde3e0", borderRadius: 8, color: "#454545", fontSize: 14, minWidth: 240 }}>
             {firmalar.map(f => <option key={f.id} value={f.id}>{f.ad}</option>)}
           </select>
           {firma && (
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <span style={{ background: "#e2e8f0", borderRadius: 8, padding: "6px 12px", fontSize: 13, color: "#64748b" }}>
+              <span style={{ background: "#ecf0f1", borderRadius: 8, padding: "6px 12px", fontSize: 13, color: "#ADB5BD" }}>
                 {TEHLIKE[firma.tehlike_sinifi]?.icon} {firma.tehlike_sinifi}
               </span>
-              {firma.calisansayisi > 0 && <span style={{ background: "#e2e8f0", borderRadius: 8, padding: "6px 12px", fontSize: 13, color: "#64748b" }}>👷 {firma.calisansayisi} çalışan</span>}
-              {firma.sorumlu_kisi && <span style={{ background: "#e2e8f0", borderRadius: 8, padding: "6px 12px", fontSize: 13, color: "#64748b" }}>👤 {firma.sorumlu_kisi}</span>}
-              {firma.iletisim && <span style={{ background: "#e2e8f0", borderRadius: 8, padding: "6px 12px", fontSize: 13, color: "#64748b" }}>📞 {firma.iletisim}</span>}
+              {firma.calisansayisi > 0 && <span style={{ background: "#ecf0f1", borderRadius: 8, padding: "6px 12px", fontSize: 13, color: "#ADB5BD" }}>👷 {firma.calisansayisi} çalışan</span>}
+              {firma.sorumlu_kisi && <span style={{ background: "#ecf0f1", borderRadius: 8, padding: "6px 12px", fontSize: 13, color: "#ADB5BD" }}>👤 {firma.sorumlu_kisi}</span>}
+              {firma.iletisim && <span style={{ background: "#ecf0f1", borderRadius: 8, padding: "6px 12px", fontSize: 13, color: "#ADB5BD" }}>📞 {firma.iletisim}</span>}
             </div>
           )}
           {firma && <Btn onClick={() => setSecFirmaDetay(firma)} variant="secondary" style={{ fontSize: 12, padding: "7px 14px", marginLeft: "auto" }}>✏️ Firma Güncelle</Btn>}
@@ -846,33 +846,33 @@ export default function App() {
           <CardHeader title="➕ Yeni Doküman / Kayıt Ekle" />
           <div style={{ padding: 16, display: "grid", gridTemplateColumns: "1fr 2fr 1fr 1fr", gap: 12 }}>
             <div>
-              <label style={{ display: "block", fontSize: 12, color: "#94a3b8", marginBottom: 5 }}>Kategori</label>
+              <label style={{ display: "block", fontSize: 12, color: "#ADB5BD", marginBottom: 5 }}>Kategori</label>
               <select value={yeniForm.kategori} onChange={e => setYeniForm(f => ({ ...f, kategori: e.target.value }))}
-                style={{ width: "100%", padding: "8px 10px", background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: 7, color: "#374151", fontSize: 13 }}>
+                style={{ width: "100%", padding: "8px 10px", background: "#F4F7F6", border: "1px solid #dde3e0", borderRadius: 7, color: "#454545", fontSize: 13 }}>
                 {DOKUMAN_KATEGORILER.map(k => <option key={k.id} value={k.id}>{k.icon} {k.ad}</option>)}
               </select>
             </div>
             <div>
-              <label style={{ display: "block", fontSize: 12, color: "#94a3b8", marginBottom: 5 }}>Başlık / Açıklama</label>
+              <label style={{ display: "block", fontSize: 12, color: "#ADB5BD", marginBottom: 5 }}>Başlık / Açıklama</label>
               <input value={yeniForm.baslik} onChange={e => setYeniForm(f => ({ ...f, baslik: e.target.value }))} placeholder="Örn: Risk değerlendirmesi yapıldı"
-                style={{ width: "100%", padding: "8px 10px", background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: 7, color: "#374151", fontSize: 13, boxSizing: "border-box" }} />
+                style={{ width: "100%", padding: "8px 10px", background: "#F4F7F6", border: "1px solid #dde3e0", borderRadius: 7, color: "#454545", fontSize: 13, boxSizing: "border-box" }} />
             </div>
             <div>
-              <label style={{ display: "block", fontSize: 12, color: "#94a3b8", marginBottom: 5 }}>Durum</label>
+              <label style={{ display: "block", fontSize: 12, color: "#ADB5BD", marginBottom: 5 }}>Durum</label>
               <select value={yeniForm.durum} onChange={e => setYeniForm(f => ({ ...f, durum: e.target.value }))}
-                style={{ width: "100%", padding: "8px 10px", background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: 7, color: DURUM_RENKLER[yeniForm.durum] || "#e5e7eb", fontSize: 13, fontWeight: 700 }}>
+                style={{ width: "100%", padding: "8px 10px", background: "#F4F7F6", border: "1px solid #dde3e0", borderRadius: 7, color: DURUM_RENKLER[yeniForm.durum] || "#e5e7eb", fontSize: 13, fontWeight: 700 }}>
                 {DURUM_SECENEKLER.map(d => <option key={d} value={d}>{d}</option>)}
               </select>
             </div>
             <div>
-              <label style={{ display: "block", fontSize: 12, color: "#94a3b8", marginBottom: 5 }}>Tarih</label>
+              <label style={{ display: "block", fontSize: 12, color: "#ADB5BD", marginBottom: 5 }}>Tarih</label>
               <input type="date" value={yeniForm.tarih} onChange={e => setYeniForm(f => ({ ...f, tarih: e.target.value }))}
-                style={{ width: "100%", padding: "8px 10px", background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: 7, color: "#374151", fontSize: 13, boxSizing: "border-box" }} />
+                style={{ width: "100%", padding: "8px 10px", background: "#F4F7F6", border: "1px solid #dde3e0", borderRadius: 7, color: "#454545", fontSize: 13, boxSizing: "border-box" }} />
             </div>
           </div>
           <div style={{ padding: "0 16px 16px", display: "flex", gap: 12 }}>
             <input value={yeniForm.notlar} onChange={e => setYeniForm(f => ({ ...f, notlar: e.target.value }))} placeholder="Notlar (isteğe bağlı)"
-              style={{ flex: 1, padding: "8px 10px", background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: 7, color: "#374151", fontSize: 13 }} />
+              style={{ flex: 1, padding: "8px 10px", background: "#F4F7F6", border: "1px solid #dde3e0", borderRadius: 7, color: "#454545", fontSize: 13 }} />
             <Btn onClick={async () => {
               if (!yeniForm.baslik || !secFirmaId) return;
               await dokumanKaydet(secFirmaId, yeniForm.kategori, yeniForm.baslik, yeniForm.durum, yeniForm.tarih, yeniForm.notlar);
@@ -890,34 +890,34 @@ export default function App() {
               <CardHeader title={`${kat.icon} ${kat.ad} (${kayitlar.length})`} />
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
-                  <tr style={{ background: "#f8fafc" }}>
+                  <tr style={{ background: "#F4F7F6" }}>
                     {["Başlık", "Durum", "Tarih", "Notlar", ""].map(h => (
-                      <th key={h} style={{ padding: "9px 16px", textAlign: "left", fontSize: 11, color: "#94a3b8", fontWeight: 700, textTransform: "uppercase" }}>{h}</th>
+                      <th key={h} style={{ padding: "9px 16px", textAlign: "left", fontSize: 11, color: "#233142", fontWeight: 700, textTransform: "uppercase" }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {kayitlar.sort((a,b) => new Date(b.created_at) - new Date(a.created_at)).map((k, i) => (
-                    <tr key={k.id} style={{ borderTop: "1px solid #e2e8f0", background: i % 2 === 0 ? "transparent" : "#0f172a22" }}>
+                    <tr key={k.id} style={{ borderTop: "1px solid #dde3e0", background: i % 2 === 0 ? "transparent" : "#F4F7F633" }}>
                       {duzenleId === k.id ? (
                         <>
                           <td style={{ padding: "8px 16px" }}>
                             <input value={duzenleForm.baslik} onChange={e => setDuzenleForm(f => ({ ...f, baslik: e.target.value }))}
-                              style={{ width: "100%", padding: "6px 8px", background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: 6, color: "#374151", fontSize: 13 }} />
+                              style={{ width: "100%", padding: "6px 8px", background: "#F4F7F6", border: "1px solid #dde3e0", borderRadius: 6, color: "#454545", fontSize: 13 }} />
                           </td>
                           <td style={{ padding: "8px 16px" }}>
                             <select value={duzenleForm.durum} onChange={e => setDuzenleForm(f => ({ ...f, durum: e.target.value }))}
-                              style={{ padding: "6px 8px", background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: 6, color: DURUM_RENKLER[duzenleForm.durum], fontSize: 13, fontWeight: 700 }}>
+                              style={{ padding: "6px 8px", background: "#F4F7F6", border: "1px solid #dde3e0", borderRadius: 6, color: DURUM_RENKLER[duzenleForm.durum], fontSize: 13, fontWeight: 700 }}>
                               {DURUM_SECENEKLER.map(d => <option key={d} value={d}>{d}</option>)}
                             </select>
                           </td>
                           <td style={{ padding: "8px 16px" }}>
                             <input type="date" value={duzenleForm.tarih || ""} onChange={e => setDuzenleForm(f => ({ ...f, tarih: e.target.value }))}
-                              style={{ padding: "6px 8px", background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: 6, color: "#374151", fontSize: 13 }} />
+                              style={{ padding: "6px 8px", background: "#F4F7F6", border: "1px solid #dde3e0", borderRadius: 6, color: "#454545", fontSize: 13 }} />
                           </td>
                           <td style={{ padding: "8px 16px" }}>
                             <input value={duzenleForm.notlar || ""} onChange={e => setDuzenleForm(f => ({ ...f, notlar: e.target.value }))}
-                              style={{ width: "100%", padding: "6px 8px", background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: 6, color: "#374151", fontSize: 13 }} />
+                              style={{ width: "100%", padding: "6px 8px", background: "#F4F7F6", border: "1px solid #dde3e0", borderRadius: 6, color: "#454545", fontSize: 13 }} />
                           </td>
                           <td style={{ padding: "8px 16px", display: "flex", gap: 6 }}>
                             <Btn variant="success" style={{ fontSize: 12, padding: "5px 10px" }} onClick={async () => { await dokumanGuncelle(k.id, duzenleForm); setDuzenleId(null); }}>✓</Btn>
@@ -926,12 +926,12 @@ export default function App() {
                         </>
                       ) : (
                         <>
-                          <td style={{ padding: "11px 16px", color: "#1e293b", fontSize: 13, fontWeight: 500 }}>{k.baslik}</td>
+                          <td style={{ padding: "11px 16px", color: "#454545", fontSize: 13, fontWeight: 500 }}>{k.baslik}</td>
                           <td style={{ padding: "11px 16px" }}>
                             <span style={{ color: DURUM_RENKLER[k.durum] || "#9ca3af", fontWeight: 700, fontSize: 13 }}>{k.durum}</span>
                           </td>
-                          <td style={{ padding: "11px 16px", color: "#64748b", fontSize: 13 }}>{formatTarih(k.tarih)}</td>
-                          <td style={{ padding: "11px 16px", color: "#94a3b8", fontSize: 12 }}>{k.notlar}</td>
+                          <td style={{ padding: "11px 16px", color: "#ADB5BD", fontSize: 13 }}>{formatTarih(k.tarih)}</td>
+                          <td style={{ padding: "11px 16px", color: "#ADB5BD", fontSize: 12 }}>{k.notlar}</td>
                           <td style={{ padding: "11px 16px", display: "flex", gap: 6 }}>
                             <Btn variant="secondary" style={{ fontSize: 12, padding: "5px 10px" }} onClick={() => { setDuzenleId(k.id); setDuzenleForm({ baslik: k.baslik, durum: k.durum, tarih: k.tarih || "", notlar: k.notlar || "" }); }}>✏️</Btn>
                             <Btn variant="danger" style={{ fontSize: 12, padding: "5px 10px" }} onClick={() => dokumanSil(k.id)}>Sil</Btn>
@@ -946,7 +946,7 @@ export default function App() {
           );
         })}
         {firmaDokumanlari.length === 0 && (
-          <div style={{ textAlign: "center", padding: 60, color: "#94a3b8" }}>Bu firma için henüz doküman kaydı yok. Yukarıdan ekleyin.</div>
+          <div style={{ textAlign: "center", padding: 60, color: "#ADB5BD" }}>Bu firma için henüz doküman kaydı yok. Yukarıdan ekleyin.</div>
         )}
       </div>
     );
@@ -1117,20 +1117,20 @@ export default function App() {
         {/* Üst kontroller */}
         <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap", alignItems: "center" }}>
           <select value={secFirmaId || ""} onChange={e => setSecFirmaId(Number(e.target.value))}
-            style={{ padding: "10px 14px", background: "#ffffff", border: "1px solid #cbd5e1", borderRadius: 8, color: "#374151", fontSize: 14, minWidth: 220 }}>
+            style={{ padding: "10px 14px", background: "#ffffff", border: "1px solid #dde3e0", borderRadius: 8, color: "#454545", fontSize: 14, minWidth: 220 }}>
             {firmalar.map(f => <option key={f.id} value={f.id}>{f.ad}</option>)}
           </select>
           <select value={String(egitimTuru)} onChange={e => setEgitimTuru(e.target.value)}
-            style={{ padding: "10px 14px", background: "#ffffff", border: "1px solid #cbd5e1", borderRadius: 8, color: "#374151", fontSize: 14 }}>
+            style={{ padding: "10px 14px", background: "#ffffff", border: "1px solid #dde3e0", borderRadius: 8, color: "#454545", fontSize: 14 }}>
             {egitimTurleri.map(e => <option key={e.id} value={String(e.id)}>{e.icon} {e.ad}</option>)}
           </select>
           {/* Saat bilgi kartı */}
           {tehlike && (
-            <div style={{ background: "#ffffff", border: `1px solid ${tehlike.renk}33`, borderRadius: 8, padding: "8px 14px", fontSize: 12, color: "#64748b", display: "flex", gap: 16 }}>
+            <div style={{ background: "#ffffff", border: `1px solid ${tehlike.renk}33`, borderRadius: 8, padding: "8px 14px", fontSize: 12, color: "#ADB5BD", display: "flex", gap: 16 }}>
               <span>{tehlike.icon} {firma?.tehlike_sinifi}</span>
-              <span>Eğitim 1: <strong style={{ color: "#2563eb" }}>{tehlike.egitim1Saat} saat</strong></span>
-              {tehlike.egitim2Saat > 0 && <span>Eğitim 2: <strong style={{ color: "#2563eb" }}>{tehlike.egitim2Saat} saat</strong></span>}
-              <span>Toplam hedef: <strong style={{ color: "#16a34a" }}>{tehlike.toplamSaat} saat</strong></span>
+              <span>Eğitim 1: <strong style={{ color: "#233142" }}>{tehlike.egitim1Saat} saat</strong></span>
+              {tehlike.egitim2Saat > 0 && <span>Eğitim 2: <strong style={{ color: "#233142" }}>{tehlike.egitim2Saat} saat</strong></span>}
+              <span>Toplam hedef: <strong style={{ color: "#27ae60" }}>{tehlike.toplamSaat} saat</strong></span>
             </div>
           )}
           <div style={{ display: "flex", gap: 6, marginLeft: "auto" }}>
@@ -1149,9 +1149,9 @@ export default function App() {
             <CardHeader title={`${egitimIcon} ${firma?.ad || ""} — ${egitimAdi} (${egitimListesi.length} personel)`} />
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
-                <tr style={{ background: "#f8fafc" }}>
+                <tr style={{ background: "#F4F7F6" }}>
                   {["Ad Soyad", "Görev", "TC No", "Eğitim 1", "Eğitim 2", "Toplam Saat", "Durum", ""].map(h => (
-                    <th key={h} style={{ padding: "11px 14px", textAlign: "left", fontSize: 11, color: "#94a3b8", fontWeight: 700, textTransform: "uppercase" }}>{h}</th>
+                    <th key={h} style={{ padding: "11px 14px", textAlign: "left", fontSize: 11, color: "#233142", fontWeight: 700, textTransform: "uppercase" }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -1160,20 +1160,20 @@ export default function App() {
                   const { toplam, hedef } = p.saatler;
                   const tamamlandi = toplam >= hedef;
                   return (
-                    <tr key={p.id} style={{ borderTop: "1px solid #e2e8f0" }}>
-                      <td style={{ padding: "12px 14px", fontWeight: 600, color: "#1e293b" }}>{p.ad_soyad}</td>
-                      <td style={{ padding: "12px 14px", color: "#64748b", fontSize: 13 }}>{p.gorev}</td>
-                      <td style={{ padding: "12px 14px", color: "#94a3b8", fontSize: 12, fontFamily: "monospace" }}>{p.tc_no}</td>
+                    <tr key={p.id} style={{ borderTop: "1px solid #dde3e0" }}>
+                      <td style={{ padding: "12px 14px", fontWeight: 600, color: "#233142" }}>{p.ad_soyad}</td>
+                      <td style={{ padding: "12px 14px", color: "#ADB5BD", fontSize: 13 }}>{p.gorev}</td>
+                      <td style={{ padding: "12px 14px", color: "#ADB5BD", fontSize: 12, fontFamily: "monospace" }}>{p.tc_no}</td>
                       <td style={{ padding: "12px 14px", fontSize: 13 }}>
-                        {p.egitim1 ? <span style={{ color: "#16a34a" }}>{formatTarih(p.egitim1.egitim_tarihi)}</span> : <span style={{ color: "#94a3b8" }}>—</span>}
-                        {p.egitim1 && tehlike && <span style={{ color: "#94a3b8", fontSize: 11, marginLeft: 4 }}>({tehlike.egitim1Saat}s)</span>}
+                        {p.egitim1 ? <span style={{ color: "#27ae60" }}>{formatTarih(p.egitim1.egitim_tarihi)}</span> : <span style={{ color: "#ADB5BD" }}>—</span>}
+                        {p.egitim1 && tehlike && <span style={{ color: "#ADB5BD", fontSize: 11, marginLeft: 4 }}>({tehlike.egitim1Saat}s)</span>}
                       </td>
                       <td style={{ padding: "12px 14px", fontSize: 13 }}>
                         {tehlike?.egitim2Saat > 0
                           ? p.egitim2
-                            ? <span style={{ color: "#16a34a" }}>{formatTarih(p.egitim2.egitim_tarihi)}<span style={{ color: "#94a3b8", fontSize: 11, marginLeft: 4 }}>({tehlike.egitim2Saat}s)</span></span>
-                            : <span style={{ color: "#dc2626" }}>Eksik</span>
-                          : <span style={{ color: "#94a3b8", fontSize: 12 }}>Gerekmiyor</span>
+                            ? <span style={{ color: "#27ae60" }}>{formatTarih(p.egitim2.egitim_tarihi)}<span style={{ color: "#ADB5BD", fontSize: 11, marginLeft: 4 }}>({tehlike.egitim2Saat}s)</span></span>
+                            : <span style={{ color: "#e74c3c" }}>Eksik</span>
+                          : <span style={{ color: "#ADB5BD", fontSize: 12 }}>Gerekmiyor</span>
                         }
                       </td>
                       <td style={{ padding: "12px 14px" }}>
@@ -1191,7 +1191,7 @@ export default function App() {
                     </tr>
                   );
                 })}
-                {egitimListesi.length === 0 && <tr><td colSpan={8} style={{ padding: 40, textAlign: "center", color: "#94a3b8" }}>Bu firmada aktif personel yok.</td></tr>}
+                {egitimListesi.length === 0 && <tr><td colSpan={8} style={{ padding: 40, textAlign: "center", color: "#ADB5BD" }}>Bu firmada aktif personel yok.</td></tr>}
               </tbody>
             </table>
           </Card>
@@ -1204,7 +1204,7 @@ export default function App() {
             <div style={{ padding: 20 }}>
               {/* Personel seç */}
               <div style={{ marginBottom: 16 }}>
-                <label style={{ display: "block", fontSize: 12, color: "#94a3b8", marginBottom: 6 }}>Personel Seç</label>
+                <label style={{ display: "block", fontSize: 12, color: "#ADB5BD", marginBottom: 6 }}>Personel Seç</label>
                 <select value={tekForm.tc} onChange={e => {
                   const p = firmaPersonel.find(x => x.tc_no === e.target.value);
                   if (p) {
@@ -1212,34 +1212,34 @@ export default function App() {
                     setTekForm({ tc: e.target.value, tarih1: egitim1?.egitim_tarihi || "", tarih2: egitim2?.egitim_tarihi || "" });
                   } else setTekForm({ tc: e.target.value, tarih1: "", tarih2: "" });
                 }}
-                  style={{ width: "100%", padding: "9px 12px", background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: 8, color: "#374151", fontSize: 13 }}>
+                  style={{ width: "100%", padding: "9px 12px", background: "#F4F7F6", border: "1px solid #dde3e0", borderRadius: 8, color: "#454545", fontSize: 13 }}>
                   <option value="">-- Personel Seçin --</option>
                   {firmaPersonel.map(p => <option key={p.id} value={p.tc_no}>{p.ad_soyad} — {p.tc_no}</option>)}
                 </select>
               </div>
               {/* Eğitim tarihleri */}
               <div style={{ display: "grid", gridTemplateColumns: tehlike?.egitim2Saat > 0 ? "1fr 1fr" : "1fr", gap: 16, marginBottom: 16 }}>
-                <div style={{ background: "#f8fafc", borderRadius: 8, padding: 14, border: "1px solid #1e293b" }}>
-                  <div style={{ fontWeight: 700, color: "#2563eb", marginBottom: 10, fontSize: 13 }}>
-                    📅 Eğitim 1 — <span style={{ color: "#16a34a" }}>{tehlike?.egitim1Saat || 8} saat</span>
+                <div style={{ background: "#F4F7F6", borderRadius: 8, padding: 14, border: "1px solid #1e293b" }}>
+                  <div style={{ fontWeight: 700, color: "#233142", marginBottom: 10, fontSize: 13 }}>
+                    📅 Eğitim 1 — <span style={{ color: "#27ae60" }}>{tehlike?.egitim1Saat || 8} saat</span>
                   </div>
                   <input type="date" value={tekForm.tarih1} onChange={e => setTekForm(f => ({ ...f, tarih1: e.target.value }))}
-                    style={{ width: "100%", padding: "9px 12px", background: "#ffffff", border: "1px solid #cbd5e1", borderRadius: 8, color: "#374151", fontSize: 13, boxSizing: "border-box" }} />
+                    style={{ width: "100%", padding: "9px 12px", background: "#ffffff", border: "1px solid #dde3e0", borderRadius: 8, color: "#454545", fontSize: 13, boxSizing: "border-box" }} />
                 </div>
                 {tehlike?.egitim2Saat > 0 && (
-                  <div style={{ background: "#f8fafc", borderRadius: 8, padding: 14, border: "1px solid #1e293b" }}>
-                    <div style={{ fontWeight: 700, color: "#2563eb", marginBottom: 10, fontSize: 13 }}>
-                      📅 Eğitim 2 — <span style={{ color: "#16a34a" }}>{tehlike.egitim2Saat} saat</span>
+                  <div style={{ background: "#F4F7F6", borderRadius: 8, padding: 14, border: "1px solid #1e293b" }}>
+                    <div style={{ fontWeight: 700, color: "#233142", marginBottom: 10, fontSize: 13 }}>
+                      📅 Eğitim 2 — <span style={{ color: "#27ae60" }}>{tehlike.egitim2Saat} saat</span>
                     </div>
                     <input type="date" value={tekForm.tarih2} onChange={e => setTekForm(f => ({ ...f, tarih2: e.target.value }))}
-                      style={{ width: "100%", padding: "9px 12px", background: "#ffffff", border: "1px solid #cbd5e1", borderRadius: 8, color: "#374151", fontSize: 13, boxSizing: "border-box" }} />
+                      style={{ width: "100%", padding: "9px 12px", background: "#ffffff", border: "1px solid #dde3e0", borderRadius: 8, color: "#454545", fontSize: 13, boxSizing: "border-box" }} />
                   </div>
                 )}
               </div>
               {tehlike && (
-                <div style={{ background: "#ffffff", borderRadius: 8, padding: 10, marginBottom: 16, fontSize: 13, color: "#64748b" }}>
-                  {tehlike.icon} <strong style={{ color: "#1e293b" }}>{firma?.tehlike_sinifi}</strong> — Hedef toplam:
-                  <strong style={{ color: "#16a34a", marginLeft: 6 }}>{tehlike.toplamSaat} saat</strong>
+                <div style={{ background: "#ffffff", borderRadius: 8, padding: 10, marginBottom: 16, fontSize: 13, color: "#ADB5BD" }}>
+                  {tehlike.icon} <strong style={{ color: "#454545" }}>{firma?.tehlike_sinifi}</strong> — Hedef toplam:
+                  <strong style={{ color: "#27ae60", marginLeft: 6 }}>{tehlike.toplamSaat} saat</strong>
                   {" "}({tehlike.egitim1Saat}s + {tehlike.egitim2Saat}s)
                 </div>
               )}
@@ -1255,13 +1255,13 @@ export default function App() {
           <Card>
             <CardHeader title={`📤 Toplu Yükleme — ${egitimAdi}`} />
             <div style={{ padding: 20 }}>
-              <div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 8, background: "#f8fafc", borderRadius: 8, padding: 12 }}>
-                <div style={{ fontWeight: 700, color: "#1e293b", marginBottom: 8 }}>📋 Excel'den doğrudan yapıştırın — iki format desteklenir:</div>
+              <div style={{ fontSize: 12, color: "#ADB5BD", marginBottom: 8, background: "#F4F7F6", borderRadius: 8, padding: 12 }}>
+                <div style={{ fontWeight: 700, color: "#454545", marginBottom: 8 }}>📋 Excel'den doğrudan yapıştırın — iki format desteklenir:</div>
                 <div style={{ marginBottom: 6 }}>
-                  <span style={{ color: "#2563eb" }}>Tam format:</span> <span style={{ fontFamily: "monospace", color: "#16a34a" }}>Firma [TAB] Ad Soyad [TAB] Görev [TAB] TCKN [TAB] Eğitim1 [TAB] Eğitim2</span>
+                  <span style={{ color: "#233142" }}>Tam format:</span> <span style={{ fontFamily: "monospace", color: "#27ae60" }}>Firma [TAB] Ad Soyad [TAB] Görev [TAB] TCKN [TAB] Eğitim1 [TAB] Eğitim2</span>
                 </div>
                 <div style={{ marginBottom: 8 }}>
-                  <span style={{ color: "#2563eb" }}>Kısa format:</span> <span style={{ fontFamily: "monospace", color: "#16a34a" }}>TCKN [TAB] Eğitim1 Tarihi [TAB] Eğitim2 Tarihi</span>
+                  <span style={{ color: "#233142" }}>Kısa format:</span> <span style={{ fontFamily: "monospace", color: "#27ae60" }}>TCKN [TAB] Eğitim1 Tarihi [TAB] Eğitim2 Tarihi</span>
                 </div>
                 <div style={{ color: "#d97706" }}>
                   ⚠️ Aynı kişinin birden fazla satırı varsa sistem otomatik birleştirir —
@@ -1271,7 +1271,7 @@ export default function App() {
               </div>
               <textarea value={topluMetin} onChange={e => { setTopluMetin(e.target.value); setTopluSonuc(null); }} rows={10}
                 placeholder={"Excel'den kopyala-yapıştır:\nSODEXO DIŞ CEPHE\tOnur Şensoy\tCamcı\t57607355682\t28.01.2025\t28.01.2025\nSODEXO DIŞ CEPHE\tZeki Senok\tCamcı\t32438095778\t21.01.2025\t21.01.2025"}
-                style={{ width: "100%", padding: "10px 14px", background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: 8, color: "#374151", fontSize: 12, resize: "vertical", boxSizing: "border-box", fontFamily: "monospace", marginBottom: 12 }} />
+                style={{ width: "100%", padding: "10px 14px", background: "#F4F7F6", border: "1px solid #dde3e0", borderRadius: 8, color: "#454545", fontSize: 12, resize: "vertical", boxSizing: "border-box", fontFamily: "monospace", marginBottom: 12 }} />
               <div style={{ display: "flex", gap: 10 }}>
                 <Btn onClick={topluKarsilastir} disabled={!topluMetin.trim()} variant="secondary">🔍 Analiz Et</Btn>
                 {topluSonuc && <Btn onClick={topluOnayla} variant="success" disabled={!topluSonuc.basarili.length || yukleniyor2}>
@@ -1284,13 +1284,13 @@ export default function App() {
                 <div style={{ marginTop: 20 }}>
                   {topluSonuc.basarili.length > 0 && (
                     <div style={{ marginBottom: 14 }}>
-                      <div style={{ fontWeight: 700, color: "#16a34a", marginBottom: 10, fontSize: 14 }}>
+                      <div style={{ fontWeight: 700, color: "#27ae60", marginBottom: 10, fontSize: 14 }}>
                         ✅ Kaydedilecek — {topluSonuc.basarili.length} kişi
                       </div>
                       <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                        <thead><tr style={{ background: "#f8fafc" }}>
+                        <thead><tr style={{ background: "#F4F7F6" }}>
                           {["Ad Soyad", "TC No", "Eğitim 1", "Eğitim 2", "Toplam Saat", "Geçerlilik Bitiş"].map(h =>
-                            <th key={h} style={{ padding: "9px 12px", textAlign: "left", fontSize: 11, color: "#94a3b8", fontWeight: 700, textTransform: "uppercase" }}>{h}</th>)}
+                            <th key={h} style={{ padding: "9px 12px", textAlign: "left", fontSize: 11, color: "#233142", fontWeight: 700, textTransform: "uppercase" }}>{h}</th>)}
                         </tr></thead>
                         <tbody>
                           {topluSonuc.basarili.map((k, i) => {
@@ -1299,18 +1299,18 @@ export default function App() {
                             const toplam = saat1 + saat2;
                             const hedef = tehlike?.toplamSaat || 0;
                             return (
-                              <tr key={i} style={{ borderTop: "1px solid #e2e8f0" }}>
-                                <td style={{ padding: "10px 12px", fontWeight: 600, color: "#1e293b", fontSize: 13 }}>{k.p.ad_soyad}</td>
-                                <td style={{ padding: "10px 12px", color: "#94a3b8", fontSize: 12, fontFamily: "monospace" }}>{k.p.tc_no}</td>
+                              <tr key={i} style={{ borderTop: "1px solid #dde3e0" }}>
+                                <td style={{ padding: "10px 12px", fontWeight: 600, color: "#233142", fontSize: 13 }}>{k.p.ad_soyad}</td>
+                                <td style={{ padding: "10px 12px", color: "#ADB5BD", fontSize: 12, fontFamily: "monospace" }}>{k.p.tc_no}</td>
                                 <td style={{ padding: "10px 12px", fontSize: 13 }}>
-                                  {k.tarih1 ? <span style={{ color: "#16a34a" }}>{formatTarih(k.tarih1)} <span style={{ color: "#94a3b8", fontSize: 11 }}>({tehlike?.egitim1Saat}s)</span></span> : <span style={{ color: "#94a3b8" }}>—</span>}
+                                  {k.tarih1 ? <span style={{ color: "#27ae60" }}>{formatTarih(k.tarih1)} <span style={{ color: "#ADB5BD", fontSize: 11 }}>({tehlike?.egitim1Saat}s)</span></span> : <span style={{ color: "#ADB5BD" }}>—</span>}
                                 </td>
                                 <td style={{ padding: "10px 12px", fontSize: 13 }}>
                                   {tehlike?.egitim2Saat > 0
                                     ? k.tarih2
-                                      ? <span style={{ color: "#16a34a" }}>{formatTarih(k.tarih2)} <span style={{ color: "#94a3b8", fontSize: 11 }}>({tehlike.egitim2Saat}s)</span></span>
-                                      : <span style={{ color: "#dc2626", fontSize: 12 }}>Eksik</span>
-                                    : <span style={{ color: "#94a3b8", fontSize: 12 }}>—</span>}
+                                      ? <span style={{ color: "#27ae60" }}>{formatTarih(k.tarih2)} <span style={{ color: "#ADB5BD", fontSize: 11 }}>({tehlike.egitim2Saat}s)</span></span>
+                                      : <span style={{ color: "#e74c3c", fontSize: 12 }}>Eksik</span>
+                                    : <span style={{ color: "#ADB5BD", fontSize: 12 }}>—</span>}
                                 </td>
                                 <td style={{ padding: "10px 12px" }}>
                                   <span style={{ fontWeight: 700, color: toplam >= hedef ? "#4ade80" : "#fbbf24" }}>
@@ -1329,11 +1329,11 @@ export default function App() {
                   )}
                   {topluSonuc.hatali.length > 0 && (
                     <div>
-                      <div style={{ fontWeight: 700, color: "#dc2626", marginBottom: 8 }}>❌ Eşleştirilemeyen satırlar ({topluSonuc.hatali.length})</div>
+                      <div style={{ fontWeight: 700, color: "#e74c3c", marginBottom: 8 }}>❌ Eşleştirilemeyen satırlar ({topluSonuc.hatali.length})</div>
                       {topluSonuc.hatali.map((h, i) => (
-                        <div key={i} style={{ background: "#fee2e2", borderRadius: 6, padding: "7px 12px", marginBottom: 4, fontSize: 12, color: "#dc2626" }}>
+                        <div key={i} style={{ background: "#fdedec", borderRadius: 6, padding: "7px 12px", marginBottom: 4, fontSize: 12, color: "#e74c3c" }}>
                           <span style={{ fontFamily: "monospace" }}>{h.satir.substring(0, 80)}{h.satir.length > 80 ? "..." : ""}</span>
-                          <span style={{ color: "#dc2626", marginLeft: 8 }}>→ {h.sebep}</span>
+                          <span style={{ color: "#e74c3c", marginLeft: 8 }}>→ {h.sebep}</span>
                         </div>
                       ))}
                     </div>
@@ -1442,21 +1442,21 @@ export default function App() {
         {/* Üst kontroller */}
         <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap", alignItems: "center" }}>
           <select value={secFirmaId || ""} onChange={e => { setSecFirmaId(Number(e.target.value)); setTopluSonuc(null); }}
-            style={{ padding: "10px 14px", background: "#ffffff", border: "1px solid #cbd5e1", borderRadius: 8, color: "#374151", fontSize: 14, minWidth: 220 }}>
+            style={{ padding: "10px 14px", background: "#ffffff", border: "1px solid #dde3e0", borderRadius: 8, color: "#454545", fontSize: 14, minWidth: 220 }}>
             {firmalar.map(f => <option key={f.id} value={f.id}>{f.ad}</option>)}
           </select>
           <select value={muayeneTuru} onChange={e => { setMuayeneTuru(e.target.value); setTopluSonuc(null); }}
-            style={{ padding: "10px 14px", background: "#ffffff", border: "1px solid #cbd5e1", borderRadius: 8, color: "#374151", fontSize: 14 }}>
+            style={{ padding: "10px 14px", background: "#ffffff", border: "1px solid #dde3e0", borderRadius: 8, color: "#454545", fontSize: 14 }}>
             {MUAYENE_TURLERI.map(m => <option key={m.id} value={m.id}>{m.icon} {m.ad}</option>)}
           </select>
           {tehlike && periyot && (
-            <div style={{ background: "#ffffff", border: `1px solid ${tehlike.renk}33`, borderRadius: 8, padding: "8px 14px", fontSize: 12, color: "#64748b", display: "flex", gap: 12 }}>
+            <div style={{ background: "#ffffff", border: `1px solid ${tehlike.renk}33`, borderRadius: 8, padding: "8px 14px", fontSize: 12, color: "#ADB5BD", display: "flex", gap: 12 }}>
               <span>{tehlike.icon} {firma?.tehlike_sinifi}</span>
-              <span>Periyot: <strong style={{ color: "#2563eb" }}>{periyot} ayda bir</strong></span>
+              <span>Periyot: <strong style={{ color: "#233142" }}>{periyot} ayda bir</strong></span>
             </div>
           )}
           {!periyot && muayeneTuru === "ise_giris" && (
-            <div style={{ background: "#ffffff", border: "1px solid #1e293b", borderRadius: 8, padding: "8px 14px", fontSize: 12, color: "#64748b" }}>
+            <div style={{ background: "#ffffff", border: "1px solid #1e293b", borderRadius: 8, padding: "8px 14px", fontSize: 12, color: "#ADB5BD" }}>
               📋 İşe giriş muayenesi tek seferlik
             </div>
           )}
@@ -1476,22 +1476,22 @@ export default function App() {
             <CardHeader title={`🩺 ${firma?.ad || ""} — ${seciliTur?.ad} (${muayeneListesi.length} personel)`} />
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
-                <tr style={{ background: "#f8fafc" }}>
+                <tr style={{ background: "#F4F7F6" }}>
                   {["Ad Soyad", "Görev", "TC No", "Son Muayene", "Sonraki", "Durum", ""].map(h => (
-                    <th key={h} style={{ padding: "11px 14px", textAlign: "left", fontSize: 11, color: "#94a3b8", fontWeight: 700, textTransform: "uppercase" }}>{h}</th>
+                    <th key={h} style={{ padding: "11px 14px", textAlign: "left", fontSize: 11, color: "#233142", fontWeight: 700, textTransform: "uppercase" }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {muayeneListesi.map((p) => (
-                  <tr key={p.id} style={{ borderTop: "1px solid #e2e8f0" }}>
-                    <td style={{ padding: "12px 14px", fontWeight: 600, color: "#1e293b" }}>{p.ad_soyad}</td>
-                    <td style={{ padding: "12px 14px", color: "#64748b", fontSize: 13 }}>{p.gorev}</td>
-                    <td style={{ padding: "12px 14px", color: "#94a3b8", fontSize: 12, fontFamily: "monospace" }}>{p.tc_no}</td>
+                  <tr key={p.id} style={{ borderTop: "1px solid #dde3e0" }}>
+                    <td style={{ padding: "12px 14px", fontWeight: 600, color: "#233142" }}>{p.ad_soyad}</td>
+                    <td style={{ padding: "12px 14px", color: "#ADB5BD", fontSize: 13 }}>{p.gorev}</td>
+                    <td style={{ padding: "12px 14px", color: "#ADB5BD", fontSize: 12, fontFamily: "monospace" }}>{p.tc_no}</td>
                     <td style={{ padding: "12px 14px", fontSize: 13, color: p.son ? "#4ade80" : "#4b5563" }}>
                       {p.son ? formatTarih(p.son.muayene_tarihi) : "—"}
                     </td>
-                    <td style={{ padding: "12px 14px", fontSize: 13, color: "#94a3b8" }}>
+                    <td style={{ padding: "12px 14px", fontSize: 13, color: "#ADB5BD" }}>
                       {periyot && p.son ? formatTarih(sonrakiTarih(p.son.muayene_tarihi, periyot)) : "—"}
                     </td>
                     <td style={{ padding: "12px 14px" }}><Badge d={p.d} /></td>
@@ -1503,7 +1503,7 @@ export default function App() {
                     </td>
                   </tr>
                 ))}
-                {muayeneListesi.length === 0 && <tr><td colSpan={7} style={{ padding: 40, textAlign: "center", color: "#94a3b8" }}>Bu firmada aktif personel yok.</td></tr>}
+                {muayeneListesi.length === 0 && <tr><td colSpan={7} style={{ padding: 40, textAlign: "center", color: "#ADB5BD" }}>Bu firmada aktif personel yok.</td></tr>}
               </tbody>
             </table>
           </Card>
@@ -1516,26 +1516,26 @@ export default function App() {
             <div style={{ padding: 20 }}>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
                 <div>
-                  <label style={{ display: "block", fontSize: 12, color: "#94a3b8", marginBottom: 6 }}>Personel Seç</label>
+                  <label style={{ display: "block", fontSize: 12, color: "#ADB5BD", marginBottom: 6 }}>Personel Seç</label>
                   <select value={tekForm.tc} onChange={e => {
                     const p = firmaPersonel.find(x => x.tc_no === e.target.value);
                     const son = p ? kisiSonMuayene(p.id) : null;
                     setTekForm({ tc: e.target.value, tarih: son?.muayene_tarihi || "" });
                   }}
-                    style={{ width: "100%", padding: "9px 12px", background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: 8, color: "#374151", fontSize: 13 }}>
+                    style={{ width: "100%", padding: "9px 12px", background: "#F4F7F6", border: "1px solid #dde3e0", borderRadius: 8, color: "#454545", fontSize: 13 }}>
                     <option value="">-- Personel Seçin --</option>
                     {firmaPersonel.map(p => <option key={p.id} value={p.tc_no}>{p.ad_soyad} — {p.tc_no}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label style={{ display: "block", fontSize: 12, color: "#94a3b8", marginBottom: 6 }}>Muayene Tarihi</label>
+                  <label style={{ display: "block", fontSize: 12, color: "#ADB5BD", marginBottom: 6 }}>Muayene Tarihi</label>
                   <input type="date" value={tekForm.tarih} onChange={e => setTekForm(f => ({ ...f, tarih: e.target.value }))}
-                    style={{ width: "100%", padding: "9px 12px", background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: 8, color: "#374151", fontSize: 13, boxSizing: "border-box" }} />
+                    style={{ width: "100%", padding: "9px 12px", background: "#F4F7F6", border: "1px solid #dde3e0", borderRadius: 8, color: "#454545", fontSize: 13, boxSizing: "border-box" }} />
                 </div>
               </div>
               {tekForm.tc && periyot && tekForm.tarih && (
-                <div style={{ background: "#ffffff", borderRadius: 8, padding: 10, marginBottom: 16, fontSize: 13, color: "#64748b" }}>
-                  📅 Sonraki muayene: <strong style={{ color: "#2563eb" }}>{formatTarih(sonrakiTarih(tekForm.tarih, periyot))}</strong>
+                <div style={{ background: "#ffffff", borderRadius: 8, padding: 10, marginBottom: 16, fontSize: 13, color: "#ADB5BD" }}>
+                  📅 Sonraki muayene: <strong style={{ color: "#233142" }}>{formatTarih(sonrakiTarih(tekForm.tarih, periyot))}</strong>
                 </div>
               )}
               <Btn onClick={tekKaydet} disabled={!tekForm.tc || !tekForm.tarih || yukleniyor2} variant="success" style={{ minWidth: 160 }}>
@@ -1550,19 +1550,19 @@ export default function App() {
           <Card>
             <CardHeader title={`📤 Toplu Yükleme — ${seciliTur?.ad}`} />
             <div style={{ padding: 20 }}>
-              <div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 8, background: "#f8fafc", borderRadius: 8, padding: 12 }}>
-                <div style={{ fontWeight: 700, color: "#1e293b", marginBottom: 8 }}>📋 Excel'den doğrudan yapıştırın — iki format desteklenir:</div>
+              <div style={{ fontSize: 12, color: "#ADB5BD", marginBottom: 8, background: "#F4F7F6", borderRadius: 8, padding: 12 }}>
+                <div style={{ fontWeight: 700, color: "#454545", marginBottom: 8 }}>📋 Excel'den doğrudan yapıştırın — iki format desteklenir:</div>
                 <div style={{ marginBottom: 4 }}>
-                  <span style={{ color: "#2563eb" }}>Tam format:</span> <span style={{ fontFamily: "monospace", color: "#16a34a" }}>Firma [TAB] Ad Soyad [TAB] Görev [TAB] TCKN [TAB] Muayene Tarihi</span>
+                  <span style={{ color: "#233142" }}>Tam format:</span> <span style={{ fontFamily: "monospace", color: "#27ae60" }}>Firma [TAB] Ad Soyad [TAB] Görev [TAB] TCKN [TAB] Muayene Tarihi</span>
                 </div>
                 <div>
-                  <span style={{ color: "#2563eb" }}>Kısa format:</span> <span style={{ fontFamily: "monospace", color: "#16a34a" }}>TCKN [TAB] Muayene Tarihi</span>
+                  <span style={{ color: "#233142" }}>Kısa format:</span> <span style={{ fontFamily: "monospace", color: "#27ae60" }}>TCKN [TAB] Muayene Tarihi</span>
                 </div>
                 {periyot && <div style={{ color: "#d97706", marginTop: 6 }}>⚠️ Aynı kişinin birden fazla satırı varsa en son tarih alınır. Periyot: {periyot} ay.</div>}
               </div>
               <textarea value={topluMetin} onChange={e => { setTopluMetin(e.target.value); setTopluSonuc(null); }} rows={8}
                 placeholder={"Excel'den kopyala-yapıştır:\nSODEXO DIŞ CEPHE\tOnur Şensoy\tCamcı\t57607355682\t28.01.2025"}
-                style={{ width: "100%", padding: "10px 14px", background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: 8, color: "#374151", fontSize: 12, resize: "vertical", boxSizing: "border-box", fontFamily: "monospace", marginBottom: 12 }} />
+                style={{ width: "100%", padding: "10px 14px", background: "#F4F7F6", border: "1px solid #dde3e0", borderRadius: 8, color: "#454545", fontSize: 12, resize: "vertical", boxSizing: "border-box", fontFamily: "monospace", marginBottom: 12 }} />
               <div style={{ display: "flex", gap: 10 }}>
                 <Btn onClick={topluKarsilastir} disabled={!topluMetin.trim()} variant="secondary">🔍 Analiz Et</Btn>
                 {topluSonuc && <Btn onClick={topluOnayla} variant="success" disabled={!topluSonuc.basarili.length || yukleniyor2}>
@@ -1574,18 +1574,18 @@ export default function App() {
                 <div style={{ marginTop: 20 }}>
                   {topluSonuc.basarili.length > 0 && (
                     <div style={{ marginBottom: 14 }}>
-                      <div style={{ fontWeight: 700, color: "#16a34a", marginBottom: 10 }}>✅ Eklenecek — {topluSonuc.basarili.length} kişi</div>
+                      <div style={{ fontWeight: 700, color: "#27ae60", marginBottom: 10 }}>✅ Eklenecek — {topluSonuc.basarili.length} kişi</div>
                       <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                        <thead><tr style={{ background: "#f8fafc" }}>
+                        <thead><tr style={{ background: "#F4F7F6" }}>
                           {["Ad Soyad", "TC No", "Muayene Tarihi", "Sonraki Muayene"].map(h =>
-                            <th key={h} style={{ padding: "9px 12px", textAlign: "left", fontSize: 11, color: "#94a3b8", fontWeight: 700, textTransform: "uppercase" }}>{h}</th>)}
+                            <th key={h} style={{ padding: "9px 12px", textAlign: "left", fontSize: 11, color: "#233142", fontWeight: 700, textTransform: "uppercase" }}>{h}</th>)}
                         </tr></thead>
                         <tbody>
                           {topluSonuc.basarili.map((k, i) => (
-                            <tr key={i} style={{ borderTop: "1px solid #e2e8f0" }}>
-                              <td style={{ padding: "10px 12px", fontWeight: 600, color: "#1e293b", fontSize: 13 }}>{k.p.ad_soyad}</td>
-                              <td style={{ padding: "10px 12px", color: "#94a3b8", fontSize: 12, fontFamily: "monospace" }}>{k.p.tc_no}</td>
-                              <td style={{ padding: "10px 12px", color: "#16a34a", fontSize: 13 }}>{formatTarih(k.tarih)}</td>
+                            <tr key={i} style={{ borderTop: "1px solid #dde3e0" }}>
+                              <td style={{ padding: "10px 12px", fontWeight: 600, color: "#233142", fontSize: 13 }}>{k.p.ad_soyad}</td>
+                              <td style={{ padding: "10px 12px", color: "#ADB5BD", fontSize: 12, fontFamily: "monospace" }}>{k.p.tc_no}</td>
+                              <td style={{ padding: "10px 12px", color: "#27ae60", fontSize: 13 }}>{formatTarih(k.tarih)}</td>
                               <td style={{ padding: "10px 12px", color: periyot ? "#60a5fa" : "#4b5563", fontSize: 13 }}>
                                 {periyot ? formatTarih(sonrakiTarih(k.tarih, periyot)) : "Tek seferlik"}
                               </td>
@@ -1597,11 +1597,11 @@ export default function App() {
                   )}
                   {topluSonuc.hatali.length > 0 && (
                     <div>
-                      <div style={{ fontWeight: 700, color: "#dc2626", marginBottom: 8 }}>❌ Eşleştirilemeyen ({topluSonuc.hatali.length})</div>
+                      <div style={{ fontWeight: 700, color: "#e74c3c", marginBottom: 8 }}>❌ Eşleştirilemeyen ({topluSonuc.hatali.length})</div>
                       {topluSonuc.hatali.map((h, i) => (
-                        <div key={i} style={{ background: "#fee2e2", borderRadius: 6, padding: "7px 12px", marginBottom: 4, fontSize: 12, color: "#dc2626" }}>
+                        <div key={i} style={{ background: "#fdedec", borderRadius: 6, padding: "7px 12px", marginBottom: 4, fontSize: 12, color: "#e74c3c" }}>
                           <span style={{ fontFamily: "monospace" }}>{h.satir.substring(0, 80)}{h.satir.length > 80 ? "..." : ""}</span>
-                          <span style={{ color: "#dc2626", marginLeft: 8 }}>→ {h.sebep}</span>
+                          <span style={{ color: "#e74c3c", marginLeft: 8 }}>→ {h.sebep}</span>
                         </div>
                       ))}
                     </div>
@@ -1660,10 +1660,10 @@ export default function App() {
       <div>
         <div style={{ display: "flex", gap: 12, marginBottom: 24, alignItems: "center", flexWrap: "wrap" }}>
           <select value={secFirmaId || ""} onChange={e => setSecFirmaId(Number(e.target.value))}
-            style={{ padding: "10px 14px", background: "#ffffff", border: "1px solid #cbd5e1", borderRadius: 8, color: "#374151", fontSize: 14, minWidth: 240 }}>
+            style={{ padding: "10px 14px", background: "#ffffff", border: "1px solid #dde3e0", borderRadius: 8, color: "#454545", fontSize: 14, minWidth: 240 }}>
             {firmalar.map(f => <option key={f.id} value={f.id}>{f.ad}</option>)}
           </select>
-          {firma && <span style={{ background: "#e2e8f0", borderRadius: 8, padding: "6px 12px", fontSize: 13, color: "#64748b" }}>{TEHLIKE[firma.tehlike_sinifi]?.icon} {firma.tehlike_sinifi} · {firmaPersonel.length} personel</span>}
+          {firma && <span style={{ background: "#ecf0f1", borderRadius: 8, padding: "6px 12px", fontSize: 13, color: "#ADB5BD" }}>{TEHLIKE[firma.tehlike_sinifi]?.icon} {firma.tehlike_sinifi} · {firmaPersonel.length} personel</span>}
         </div>
         <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
           {RAPOR_TABS.map(t => (
@@ -1681,19 +1681,19 @@ export default function App() {
           <Card>
             <CardHeader title={`🎓 Eğitim Eksikleri — ${firma?.ad || ""} (${egitimEksik.length})`} />
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead><tr style={{ background: "#f8fafc" }}>
-                {["Personel", "Eğitim Türü", "Durum", ""].map(h => <th key={h} style={{ padding: "11px 16px", textAlign: "left", fontSize: 11, color: "#94a3b8", fontWeight: 700, textTransform: "uppercase" }}>{h}</th>)}
+              <thead><tr style={{ background: "#F4F7F6" }}>
+                {["Personel", "Eğitim Türü", "Durum", ""].map(h => <th key={h} style={{ padding: "11px 16px", textAlign: "left", fontSize: 11, color: "#233142", fontWeight: 700, textTransform: "uppercase" }}>{h}</th>)}
               </tr></thead>
               <tbody>
                 {egitimEksik.map((k, i) => (
-                  <tr key={i} style={{ borderTop: "1px solid #e2e8f0" }}>
-                    <td style={{ padding: "12px 16px", fontWeight: 600, color: "#1e293b" }}>{k.p.ad_soyad}</td>
-                    <td style={{ padding: "12px 16px", color: "#94a3b8", fontSize: 13 }}>{k.icon} {k.tip}</td>
+                  <tr key={i} style={{ borderTop: "1px solid #dde3e0" }}>
+                    <td style={{ padding: "12px 16px", fontWeight: 600, color: "#233142" }}>{k.p.ad_soyad}</td>
+                    <td style={{ padding: "12px 16px", color: "#ADB5BD", fontSize: 13 }}>{k.icon} {k.tip}</td>
                     <td style={{ padding: "12px 16px" }}><Badge d={k.d} /></td>
                     <td style={{ padding: "12px 16px" }}><Btn onClick={() => { setSecPersonel(k.p); setAktifTab("egitim"); }} variant="danger" style={{ fontSize: 12, padding: "6px 12px" }}>Güncelle</Btn></td>
                   </tr>
                 ))}
-                {egitimEksik.length === 0 && <tr><td colSpan={4} style={{ padding: 40, textAlign: "center", color: "#16a34a" }}>✅ Tüm eğitimler güncel!</td></tr>}
+                {egitimEksik.length === 0 && <tr><td colSpan={4} style={{ padding: 40, textAlign: "center", color: "#27ae60" }}>✅ Tüm eğitimler güncel!</td></tr>}
               </tbody>
             </table>
           </Card>
@@ -1702,19 +1702,19 @@ export default function App() {
           <Card>
             <CardHeader title={`🩺 Muayene Eksikleri — ${firma?.ad || ""} (${muayeneEksik.length})`} />
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead><tr style={{ background: "#f8fafc" }}>
-                {["Personel", "Muayene Türü", "Durum", ""].map(h => <th key={h} style={{ padding: "11px 16px", textAlign: "left", fontSize: 11, color: "#94a3b8", fontWeight: 700, textTransform: "uppercase" }}>{h}</th>)}
+              <thead><tr style={{ background: "#F4F7F6" }}>
+                {["Personel", "Muayene Türü", "Durum", ""].map(h => <th key={h} style={{ padding: "11px 16px", textAlign: "left", fontSize: 11, color: "#233142", fontWeight: 700, textTransform: "uppercase" }}>{h}</th>)}
               </tr></thead>
               <tbody>
                 {muayeneEksik.map((k, i) => (
-                  <tr key={i} style={{ borderTop: "1px solid #e2e8f0" }}>
-                    <td style={{ padding: "12px 16px", fontWeight: 600, color: "#1e293b" }}>{k.p.ad_soyad}</td>
-                    <td style={{ padding: "12px 16px", color: "#94a3b8", fontSize: 13 }}>{k.icon} {k.tip}</td>
+                  <tr key={i} style={{ borderTop: "1px solid #dde3e0" }}>
+                    <td style={{ padding: "12px 16px", fontWeight: 600, color: "#233142" }}>{k.p.ad_soyad}</td>
+                    <td style={{ padding: "12px 16px", color: "#ADB5BD", fontSize: 13 }}>{k.icon} {k.tip}</td>
                     <td style={{ padding: "12px 16px" }}><Badge d={k.d} /></td>
                     <td style={{ padding: "12px 16px" }}><Btn onClick={() => { setSecPersonel(k.p); setAktifTab("muayene"); }} variant="danger" style={{ fontSize: 12, padding: "6px 12px" }}>Güncelle</Btn></td>
                   </tr>
                 ))}
-                {muayeneEksik.length === 0 && <tr><td colSpan={4} style={{ padding: 40, textAlign: "center", color: "#16a34a" }}>✅ Tüm muayeneler güncel!</td></tr>}
+                {muayeneEksik.length === 0 && <tr><td colSpan={4} style={{ padding: 40, textAlign: "center", color: "#27ae60" }}>✅ Tüm muayeneler güncel!</td></tr>}
               </tbody>
             </table>
           </Card>
@@ -1723,22 +1723,22 @@ export default function App() {
           <Card>
             <CardHeader title={`📄 Döküman Eksikleri — ${firma?.ad || ""} (${dokumanEksik.length})`} />
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead><tr style={{ background: "#f8fafc" }}>
-                {["Başlık", "Kategori", "Durum", "Notlar"].map(h => <th key={h} style={{ padding: "11px 16px", textAlign: "left", fontSize: 11, color: "#94a3b8", fontWeight: 700, textTransform: "uppercase" }}>{h}</th>)}
+              <thead><tr style={{ background: "#F4F7F6" }}>
+                {["Başlık", "Kategori", "Durum", "Notlar"].map(h => <th key={h} style={{ padding: "11px 16px", textAlign: "left", fontSize: 11, color: "#233142", fontWeight: 700, textTransform: "uppercase" }}>{h}</th>)}
               </tr></thead>
               <tbody>
                 {dokumanEksik.map((k, i) => {
                   const kat = DOKUMAN_KATEGORILER.find(x => x.id === k.kategori);
                   return (
-                    <tr key={k.id} style={{ borderTop: "1px solid #e2e8f0" }}>
-                      <td style={{ padding: "12px 16px", fontWeight: 600, color: "#1e293b" }}>{k.baslik}</td>
-                      <td style={{ padding: "12px 16px", color: "#64748b", fontSize: 13 }}>{kat?.icon} {kat?.ad}</td>
+                    <tr key={k.id} style={{ borderTop: "1px solid #dde3e0" }}>
+                      <td style={{ padding: "12px 16px", fontWeight: 600, color: "#233142" }}>{k.baslik}</td>
+                      <td style={{ padding: "12px 16px", color: "#ADB5BD", fontSize: 13 }}>{kat?.icon} {kat?.ad}</td>
                       <td style={{ padding: "12px 16px" }}><span style={{ color: k.durum === "YOK" ? "#f87171" : "#fbbf24", fontWeight: 700, fontSize: 13 }}>{k.durum}</span></td>
-                      <td style={{ padding: "12px 16px", color: "#94a3b8", fontSize: 12 }}>{k.notlar}</td>
+                      <td style={{ padding: "12px 16px", color: "#ADB5BD", fontSize: 12 }}>{k.notlar}</td>
                     </tr>
                   );
                 })}
-                {dokumanEksik.length === 0 && <tr><td colSpan={4} style={{ padding: 40, textAlign: "center", color: "#16a34a" }}>✅ Döküman eksiği yok!</td></tr>}
+                {dokumanEksik.length === 0 && <tr><td colSpan={4} style={{ padding: 40, textAlign: "center", color: "#27ae60" }}>✅ Döküman eksiği yok!</td></tr>}
               </tbody>
             </table>
           </Card>
@@ -1781,27 +1781,27 @@ export default function App() {
         <Card style={{ marginBottom: 20 }}>
           <CardHeader title="⚙️ Eğitim Türleri Yönetimi" />
           <div style={{ padding: 20 }}>
-            <div style={{ fontSize: 13, color: "#94a3b8", marginBottom: 16 }}>Eğitim türlerini buradan ekleyebilir, düzenleyebilir veya pasife alabilirsiniz.</div>
+            <div style={{ fontSize: 13, color: "#ADB5BD", marginBottom: 16 }}>Eğitim türlerini buradan ekleyebilir, düzenleyebilir veya pasife alabilirsiniz.</div>
             {/* Yeni ekleme formu */}
-            <div style={{ background: "#f8fafc", borderRadius: 10, padding: 16, marginBottom: 20, border: "1px solid #1e293b" }}>
-              <div style={{ fontWeight: 700, color: "#1e293b", marginBottom: 12, fontSize: 14 }}>➕ Yeni Eğitim Türü Ekle</div>
+            <div style={{ background: "#F4F7F6", borderRadius: 10, padding: 16, marginBottom: 20, border: "1px solid #1e293b" }}>
+              <div style={{ fontWeight: 700, color: "#454545", marginBottom: 12, fontSize: 14 }}>➕ Yeni Eğitim Türü Ekle</div>
               <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr auto", gap: 12, alignItems: "end" }}>
                 <div>
-                  <label style={{ display: "block", fontSize: 12, color: "#94a3b8", marginBottom: 5 }}>Eğitim Adı</label>
+                  <label style={{ display: "block", fontSize: 12, color: "#ADB5BD", marginBottom: 5 }}>Eğitim Adı</label>
                   <input value={form.ad} onChange={e => setForm(f => ({ ...f, ad: e.target.value }))} placeholder="Örn: İş Güvenliği Uzmanlığı"
-                    style={{ width: "100%", padding: "9px 12px", background: "#ffffff", border: "1px solid #cbd5e1", borderRadius: 8, color: "#374151", fontSize: 13, boxSizing: "border-box" }} />
+                    style={{ width: "100%", padding: "9px 12px", background: "#ffffff", border: "1px solid #dde3e0", borderRadius: 8, color: "#454545", fontSize: 13, boxSizing: "border-box" }} />
                 </div>
                 <div>
-                  <label style={{ display: "block", fontSize: 12, color: "#94a3b8", marginBottom: 5 }}>İkon</label>
+                  <label style={{ display: "block", fontSize: 12, color: "#ADB5BD", marginBottom: 5 }}>İkon</label>
                   <select value={form.icon} onChange={e => setForm(f => ({ ...f, icon: e.target.value }))}
-                    style={{ width: "100%", padding: "9px 12px", background: "#ffffff", border: "1px solid #cbd5e1", borderRadius: 8, color: "#374151", fontSize: 18 }}>
+                    style={{ width: "100%", padding: "9px 12px", background: "#ffffff", border: "1px solid #dde3e0", borderRadius: 8, color: "#454545", fontSize: 18 }}>
                     {IKONLAR.map(ik => <option key={ik} value={ik}>{ik}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label style={{ display: "block", fontSize: 12, color: "#94a3b8", marginBottom: 5 }}>Periyot (ay)</label>
+                  <label style={{ display: "block", fontSize: 12, color: "#ADB5BD", marginBottom: 5 }}>Periyot (ay)</label>
                   <input type="number" min="1" max="120" value={form.periyot} onChange={e => setForm(f => ({ ...f, periyot: e.target.value }))}
-                    style={{ width: "100%", padding: "9px 12px", background: "#ffffff", border: "1px solid #cbd5e1", borderRadius: 8, color: "#374151", fontSize: 13, boxSizing: "border-box" }} />
+                    style={{ width: "100%", padding: "9px 12px", background: "#ffffff", border: "1px solid #dde3e0", borderRadius: 8, color: "#454545", fontSize: 13, boxSizing: "border-box" }} />
                 </div>
                 <Btn onClick={ekle} disabled={!form.ad || kayit} variant="success" style={{ padding: "9px 20px" }}>
                   {kayit ? "..." : "Ekle"}
@@ -1812,31 +1812,31 @@ export default function App() {
             {/* Mevcut liste */}
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
-                <tr style={{ background: "#f8fafc" }}>
+                <tr style={{ background: "#F4F7F6" }}>
                   {["İkon", "Eğitim Adı", "Periyot", ""].map(h => (
-                    <th key={h} style={{ padding: "10px 16px", textAlign: "left", fontSize: 11, color: "#94a3b8", fontWeight: 700, textTransform: "uppercase" }}>{h}</th>
+                    <th key={h} style={{ padding: "10px 16px", textAlign: "left", fontSize: 11, color: "#233142", fontWeight: 700, textTransform: "uppercase" }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {egitimTurleri.map((et, i) => (
-                  <tr key={et.id} style={{ borderTop: "1px solid #e2e8f0" }}>
+                  <tr key={et.id} style={{ borderTop: "1px solid #dde3e0" }}>
                     {duzenleId === et.id ? (
                       <>
                         <td style={{ padding: "10px 16px" }}>
                           <select value={duzenleForm.icon} onChange={e => setDuzenleForm(f => ({ ...f, icon: e.target.value }))}
-                            style={{ padding: "6px 8px", background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: 6, color: "#374151", fontSize: 18 }}>
+                            style={{ padding: "6px 8px", background: "#F4F7F6", border: "1px solid #dde3e0", borderRadius: 6, color: "#454545", fontSize: 18 }}>
                             {IKONLAR.map(ik => <option key={ik} value={ik}>{ik}</option>)}
                           </select>
                         </td>
                         <td style={{ padding: "10px 16px" }}>
                           <input value={duzenleForm.ad} onChange={e => setDuzenleForm(f => ({ ...f, ad: e.target.value }))}
-                            style={{ width: "100%", padding: "7px 10px", background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: 6, color: "#374151", fontSize: 13 }} />
+                            style={{ width: "100%", padding: "7px 10px", background: "#F4F7F6", border: "1px solid #dde3e0", borderRadius: 6, color: "#454545", fontSize: 13 }} />
                         </td>
                         <td style={{ padding: "10px 16px" }}>
                           <input type="number" value={duzenleForm.periyot} onChange={e => setDuzenleForm(f => ({ ...f, periyot: e.target.value }))}
-                            style={{ width: 80, padding: "7px 10px", background: "#f8fafc", border: "1px solid #cbd5e1", borderRadius: 6, color: "#374151", fontSize: 13 }} />
-                          <span style={{ color: "#94a3b8", fontSize: 12, marginLeft: 6 }}>ay</span>
+                            style={{ width: 80, padding: "7px 10px", background: "#F4F7F6", border: "1px solid #dde3e0", borderRadius: 6, color: "#454545", fontSize: 13 }} />
+                          <span style={{ color: "#ADB5BD", fontSize: 12, marginLeft: 6 }}>ay</span>
                         </td>
                         <td style={{ padding: "10px 16px", display: "flex", gap: 6 }}>
                           <Btn variant="success" style={{ fontSize: 12, padding: "5px 12px" }} onClick={() => guncelle(et.id)}>✓ Kaydet</Btn>
@@ -1846,8 +1846,8 @@ export default function App() {
                     ) : (
                       <>
                         <td style={{ padding: "12px 16px", fontSize: 22 }}>{et.icon}</td>
-                        <td style={{ padding: "12px 16px", fontWeight: 600, color: "#1e293b" }}>{et.ad}</td>
-                        <td style={{ padding: "12px 16px", color: "#64748b", fontSize: 13 }}>Her <strong style={{ color: "#2563eb" }}>{et.periyot}</strong> ayda bir</td>
+                        <td style={{ padding: "12px 16px", fontWeight: 600, color: "#233142" }}>{et.ad}</td>
+                        <td style={{ padding: "12px 16px", color: "#ADB5BD", fontSize: 13 }}>Her <strong style={{ color: "#233142" }}>{et.periyot}</strong> ayda bir</td>
                         <td style={{ padding: "12px 16px", display: "flex", gap: 6 }}>
                           <Btn variant="secondary" style={{ fontSize: 12, padding: "5px 12px" }} onClick={() => { setDuzenleId(et.id); setDuzenleForm({ ad: et.ad, icon: et.icon, periyot: et.periyot }); }}>✏️ Düzenle</Btn>
                           <Btn variant="danger" style={{ fontSize: 12, padding: "5px 12px" }} onClick={() => sil(et.id)}>Pasife Al</Btn>
@@ -1856,7 +1856,7 @@ export default function App() {
                     )}
                   </tr>
                 ))}
-                {egitimTurleri.length === 0 && <tr><td colSpan={4} style={{ padding: 40, textAlign: "center", color: "#94a3b8" }}>Henüz eğitim türü yok.</td></tr>}
+                {egitimTurleri.length === 0 && <tr><td colSpan={4} style={{ padding: 40, textAlign: "center", color: "#ADB5BD" }}>Henüz eğitim türü yok.</td></tr>}
               </tbody>
             </table>
           </div>
@@ -1876,16 +1876,16 @@ export default function App() {
   ];
 
   return (
-    <div style={{ minHeight: "100vh", background: "#f1f5f9", fontFamily: "'Segoe UI', system-ui, sans-serif", color: "#1e293b", display: "flex" }}>
+    <div style={{ minHeight: "100vh", background: "#F4F7F6", fontFamily: "'Segoe UI', system-ui, sans-serif", color: "#454545", display: "flex" }}>
       {/* ── SIDEBAR ── */}
-      <div style={{ width: 240, minHeight: "100vh", background: "linear-gradient(180deg,#1e40af 0%,#1d4ed8 60%,#2563eb 100%)", borderRight: "none", display: "flex", flexDirection: "column", flexShrink: 0, boxShadow: "4px 0 20px #1e40af33" }}>
+      <div style={{ width: 240, minHeight: "100vh", background: "#233142", borderRight: "none", display: "flex", flexDirection: "column", flexShrink: 0, boxShadow: "4px 0 12px #00000022" }}>
         {/* Logo */}
-        <div style={{ padding: "20px 20px 16px", borderBottom: "1px solid #ffffff22" }}>
+        <div style={{ padding: "20px 20px 16px", borderBottom: "1px solid #ffffff15" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ width: 38, height: 38, borderRadius: 10, background: "rgba(255,255,255,0.2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>🛡️</div>
+            <div style={{ width: 38, height: 38, borderRadius: 10, background: "rgba(255,255,255,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>🛡️</div>
             <div>
               <div style={{ fontWeight: 800, fontSize: 14, color: "#ffffff", lineHeight: 1.2 }}>İSG Takip</div>
-              <div style={{ fontSize: 10, color: "#bfdbfe" }}>Sistemi</div>
+              <div style={{ fontSize: 10, color: "#ADB5BD" }}>Sistemi</div>
             </div>
           </div>
         </div>
@@ -1896,7 +1896,7 @@ export default function App() {
               width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "11px 14px",
               borderRadius: 9, border: "none", cursor: "pointer", fontSize: 14, fontWeight: 600,
               marginBottom: 4, textAlign: "left",
-              background: sayfa === id ? "rgba(255,255,255,0.2)" : "transparent",
+              background: sayfa === id ? "#34495E" : "transparent",
               color: sayfa === id ? "#ffffff" : "#bfdbfe",
               transition: "all 0.15s",
             }}>
@@ -1906,13 +1906,13 @@ export default function App() {
           ))}
         </nav>
         {/* Alt kullanıcı bilgisi */}
-        <div style={{ padding: "14px 16px", borderTop: "1px solid #ffffff22" }}>
-          <div style={{ fontSize: 11, color: "#bfdbfe", marginBottom: 8, wordBreak: "break-all" }}>{oturum?.user?.email}</div>
+        <div style={{ padding: "14px 16px", borderTop: "1px solid #ffffff15" }}>
+          <div style={{ fontSize: 11, color: "#ADB5BD", marginBottom: 8, wordBreak: "break-all" }}>{oturum?.user?.email}</div>
           <button onClick={cikisYap} style={{ width: "100%", padding: "8px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.4)", background: "rgba(255,255,255,0.1)", color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Çıkış Yap</button>
         </div>
       </div>
       {/* ── İÇERİK ── */}
-      <div style={{ flex: 1, padding: 28, overflowY: "auto", background: "#f1f5f9" }}>
+      <div style={{ flex: 1, padding: 28, overflowY: "auto", background: "#F4F7F6" }}>
         {sayfa === "dashboard"    && <Dashboard />}
         {sayfa === "personel"     && <PersonelSayfa />}
         {sayfa === "egitimtakip"  && <EgitimTakipSayfa />}
