@@ -1152,6 +1152,138 @@ export default function App() {
   };
 
 
+  const RaporSayfa = () => {
+    const [secFirmaId, setSecFirmaId] = useState(firmalar[0]?.id || null);
+    const [aktifRapor, setAktifRapor] = useState("egitim");
+    const firma = firmalar.find(f => f.id === secFirmaId);
+    const firmaPersonel = aktifPersonel.filter(p => p.firma_id === secFirmaId);
+
+    const egitimEksik = firmaPersonel.flatMap(p =>
+      egitimTurleri.flatMap(e => {
+        const son = sonEgitimBul(p.id, e.id);
+        const d = durumHesapla(son, e.periyotFn(firma?.tehlike_sinifi));
+        return d.onc >= 3 ? [{ p, tip: e.ad, icon: e.icon, d }] : [];
+      })
+    ).sort((a, b) => b.d.onc - a.d.onc);
+
+    const muayeneEksik = firmaPersonel.flatMap(p =>
+      MUAYENE_TURLERI.flatMap(m => {
+        const son = sonMuayeneBul(p.id, m.id);
+        const periyot = m.periyotFn(firma?.tehlike_sinifi);
+        if (!periyot) return [];
+        const d = durumHesapla(son, periyot);
+        return d.onc >= 3 ? [{ p, tip: m.ad, icon: m.icon, d }] : [];
+      })
+    ).sort((a, b) => b.d.onc - a.d.onc);
+
+    const dokumanEksik = dokumanlar.filter(d => d.firma_id === secFirmaId && (d.durum === "YOK" || d.durum === "PLANLANACAK"));
+
+    const RAPOR_TABS = [
+      { id: "egitim",  label: "Eğitim Eksikleri",  icon: "🎓", sayi: egitimEksik.length },
+      { id: "muayene", label: "Muayene Eksikleri",  icon: "🩺", sayi: muayeneEksik.length },
+      { id: "dokuman", label: "Döküman Eksikleri",  icon: "📄", sayi: dokumanEksik.length },
+    ];
+
+    const DOKUMAN_KATEGORILER = [
+      { id: "risk", ad: "Risk Değerlendirmesi", icon: "⚠️" },
+      { id: "acil", ad: "Acil Durum", icon: "🚨" },
+      { id: "isgkurul", ad: "İSG Kurulu", icon: "👥" },
+      { id: "plan", ad: "Yıllık Plan & Rapor", icon: "📅" },
+      { id: "atama", ad: "Atama & Görevlendirme", icon: "📌" },
+      { id: "diger", ad: "Diğer", icon: "📄" },
+    ];
+
+    return (
+      <div>
+        <div style={{ display: "flex", gap: 12, marginBottom: 24, alignItems: "center", flexWrap: "wrap" }}>
+          <select value={secFirmaId || ""} onChange={e => setSecFirmaId(Number(e.target.value))}
+            style={{ padding: "10px 14px", background: "#111827", border: "1px solid #374151", borderRadius: 8, color: "#e5e7eb", fontSize: 14, minWidth: 240 }}>
+            {firmalar.map(f => <option key={f.id} value={f.id}>{f.ad}</option>)}
+          </select>
+          {firma && <span style={{ background: "#1f2937", borderRadius: 8, padding: "6px 12px", fontSize: 13, color: "#9ca3af" }}>{TEHLIKE[firma.tehlike_sinifi]?.icon} {firma.tehlike_sinifi} · {firmaPersonel.length} personel</span>}
+        </div>
+        <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
+          {RAPOR_TABS.map(t => (
+            <button key={t.id} onClick={() => setAktifRapor(t.id)} style={{
+              padding: "10px 20px", borderRadius: 9, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 700,
+              background: aktifRapor === t.id ? "linear-gradient(135deg,#1d4ed8,#2563eb)" : "#111827",
+              color: aktifRapor === t.id ? "#fff" : "#6b7280",
+            }}>
+              {t.icon} {t.label}
+              <span style={{ marginLeft: 8, background: t.sayi > 0 ? "#ef4444" : "#374151", color: "#fff", borderRadius: 20, padding: "2px 8px", fontSize: 11 }}>{t.sayi}</span>
+            </button>
+          ))}
+        </div>
+        {aktifRapor === "egitim" && (
+          <Card>
+            <CardHeader title={`🎓 Eğitim Eksikleri — ${firma?.ad || ""} (${egitimEksik.length})`} />
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead><tr style={{ background: "#0f172a" }}>
+                {["Personel", "Eğitim Türü", "Durum", ""].map(h => <th key={h} style={{ padding: "11px 16px", textAlign: "left", fontSize: 11, color: "#6b7280", fontWeight: 700, textTransform: "uppercase" }}>{h}</th>)}
+              </tr></thead>
+              <tbody>
+                {egitimEksik.map((k, i) => (
+                  <tr key={i} style={{ borderTop: "1px solid #1f2937" }}>
+                    <td style={{ padding: "12px 16px", fontWeight: 600, color: "#f3f4f6" }}>{k.p.ad_soyad}</td>
+                    <td style={{ padding: "12px 16px", color: "#d1d5db", fontSize: 13 }}>{k.icon} {k.tip}</td>
+                    <td style={{ padding: "12px 16px" }}><Badge d={k.d} /></td>
+                    <td style={{ padding: "12px 16px" }}><Btn onClick={() => { setSecPersonel(k.p); setAktifTab("egitim"); }} variant="danger" style={{ fontSize: 12, padding: "6px 12px" }}>Güncelle</Btn></td>
+                  </tr>
+                ))}
+                {egitimEksik.length === 0 && <tr><td colSpan={4} style={{ padding: 40, textAlign: "center", color: "#4ade80" }}>✅ Tüm eğitimler güncel!</td></tr>}
+              </tbody>
+            </table>
+          </Card>
+        )}
+        {aktifRapor === "muayene" && (
+          <Card>
+            <CardHeader title={`🩺 Muayene Eksikleri — ${firma?.ad || ""} (${muayeneEksik.length})`} />
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead><tr style={{ background: "#0f172a" }}>
+                {["Personel", "Muayene Türü", "Durum", ""].map(h => <th key={h} style={{ padding: "11px 16px", textAlign: "left", fontSize: 11, color: "#6b7280", fontWeight: 700, textTransform: "uppercase" }}>{h}</th>)}
+              </tr></thead>
+              <tbody>
+                {muayeneEksik.map((k, i) => (
+                  <tr key={i} style={{ borderTop: "1px solid #1f2937" }}>
+                    <td style={{ padding: "12px 16px", fontWeight: 600, color: "#f3f4f6" }}>{k.p.ad_soyad}</td>
+                    <td style={{ padding: "12px 16px", color: "#d1d5db", fontSize: 13 }}>{k.icon} {k.tip}</td>
+                    <td style={{ padding: "12px 16px" }}><Badge d={k.d} /></td>
+                    <td style={{ padding: "12px 16px" }}><Btn onClick={() => { setSecPersonel(k.p); setAktifTab("muayene"); }} variant="danger" style={{ fontSize: 12, padding: "6px 12px" }}>Güncelle</Btn></td>
+                  </tr>
+                ))}
+                {muayeneEksik.length === 0 && <tr><td colSpan={4} style={{ padding: 40, textAlign: "center", color: "#4ade80" }}>✅ Tüm muayeneler güncel!</td></tr>}
+              </tbody>
+            </table>
+          </Card>
+        )}
+        {aktifRapor === "dokuman" && (
+          <Card>
+            <CardHeader title={`📄 Döküman Eksikleri — ${firma?.ad || ""} (${dokumanEksik.length})`} />
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead><tr style={{ background: "#0f172a" }}>
+                {["Başlık", "Kategori", "Durum", "Notlar"].map(h => <th key={h} style={{ padding: "11px 16px", textAlign: "left", fontSize: 11, color: "#6b7280", fontWeight: 700, textTransform: "uppercase" }}>{h}</th>)}
+              </tr></thead>
+              <tbody>
+                {dokumanEksik.map((k, i) => {
+                  const kat = DOKUMAN_KATEGORILER.find(x => x.id === k.kategori);
+                  return (
+                    <tr key={k.id} style={{ borderTop: "1px solid #1f2937" }}>
+                      <td style={{ padding: "12px 16px", fontWeight: 600, color: "#f3f4f6" }}>{k.baslik}</td>
+                      <td style={{ padding: "12px 16px", color: "#9ca3af", fontSize: 13 }}>{kat?.icon} {kat?.ad}</td>
+                      <td style={{ padding: "12px 16px" }}><span style={{ color: k.durum === "YOK" ? "#f87171" : "#fbbf24", fontWeight: 700, fontSize: 13 }}>{k.durum}</span></td>
+                      <td style={{ padding: "12px 16px", color: "#6b7280", fontSize: 12 }}>{k.notlar}</td>
+                    </tr>
+                  );
+                })}
+                {dokumanEksik.length === 0 && <tr><td colSpan={4} style={{ padding: 40, textAlign: "center", color: "#4ade80" }}>✅ Döküman eksiği yok!</td></tr>}
+              </tbody>
+            </table>
+          </Card>
+        )}
+      </div>
+    );
+  };
+
   const AyarlarSayfa = () => {
     const [form, setForm] = useState({ ad: "", icon: "📚", periyot: 24 });
     const [duzenleId, setDuzenleId] = useState(null);
