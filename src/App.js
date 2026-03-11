@@ -9,7 +9,7 @@ const TEHLIKE = {
 };
 // EGITIM_TURLERI artık Supabase'den yükleniyor (aşağıda state olarak)
 const MUAYENE_TURLERI = [
-  { id: "periyodik", ad: "Periyodik Sağlık Muayenesi", icon: "🩺", periyotFn: (t) => TEHLIKE[t]?.sure || 24 },
+  { id: "periyodik", ad: "Periyodik Sağlık Muayenesi", icon: "🩺", periyotFn: (t) => t === "Az Tehlikeli" ? 60 : t === "Tehlikeli" ? 36 : t === "Çok Tehlikeli" ? 12 : 36 },
   { id: "ise_giris", ad: "İşe Giriş Muayenesi",        icon: "📋", periyotFn: () => null },
 ];
 const SERTIFIKA_TURLERI = [
