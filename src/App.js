@@ -299,7 +299,21 @@ export default function App() {
     const satirlar = importMetin.trim().split("\n").map(s => s.trim()).filter(Boolean);
     const yeniListe = satirlar.map(s => {
       const p = s.split(/[\t,;]/);
-      return { tc: p[0]?.trim(), ad: p[1]?.trim() || "Bilinmiyor", gorev: p[2]?.trim() || "" };
+      const tc = p[0]?.trim();
+      const ad = p[1]?.trim() || "Bilinmiyor";
+      const gorev = p[2]?.trim() || "";
+      // İşe giriş tarihi: 4. sütun, DD.MM.YYYY veya YYYY-MM-DD formatını destekle
+      let iseGiris = p[3]?.trim() || null;
+      if (iseGiris) {
+        // DD.MM.YYYY → YYYY-MM-DD dönüşümü
+        if (/^\d{2}\.\d{2}\.\d{4}$/.test(iseGiris)) {
+          const [gun, ay, yil] = iseGiris.split(".");
+          iseGiris = `${yil}-${ay}-${gun}`;
+        }
+        // Geçersiz tarihse null yap
+        if (isNaN(new Date(iseGiris).getTime())) iseGiris = null;
+      }
+      return { tc, ad, gorev, iseGiris };
     }).filter(x => x.tc && x.tc.length >= 10);
     const mevcutlar = aktifPersonel.filter(p => p.firma_id === secFirma.id);
     const yeniTCSet = new Set(yeniListe.map(x => x.tc));
@@ -313,7 +327,14 @@ export default function App() {
     if (!karsilastirSonuc) return;
     const { cikmis, gelen } = karsilastirSonuc;
     for (const p of cikmis) await supabase.from("personel").update({ aktif: false, cikis_tarihi: bugun() }).eq("id", p.id);
-    for (const g of gelen) await supabase.from("personel").insert({ firma_id: secFirma.id, tc_no: g.tc, ad_soyad: g.ad, gorev: g.gorev, ise_giris: bugun(), aktif: true });
+    for (const g of gelen) await supabase.from("personel").insert({
+      firma_id: secFirma.id,
+      tc_no: g.tc,
+      ad_soyad: g.ad,
+      gorev: g.gorev,
+      ise_giris: g.iseGiris || bugun(),
+      aktif: true
+    });
     const mesajlar = [];
     if (cikmis.length) mesajlar.push({ tip: "cikis", mesaj: `${cikmis.length} personel pasife alındı` });
     if (gelen.length) mesajlar.push({ tip: "giris", mesaj: `${gelen.length} yeni personel eklendi — eğitim planlanmalı!` });
@@ -362,8 +383,9 @@ export default function App() {
       </div>
       <div style={{ marginBottom: 14 }}>
         <label style={{ display: "block", fontSize: 13, color: "#9ca3af", marginBottom: 6 }}>veya yapıştırın</label>
+        <div style={{ fontSize: 12, color: "#475569", marginBottom: 6 }}>Format: <span style={{ color: "#60a5fa", fontFamily: "monospace" }}>TC No · Ad Soyad · Görev · İşe Giriş Tarihi</span> (Tab veya virgülle ayrılmış)</div>
         <textarea value={importMetin} onChange={e => setImportMetin(e.target.value)} rows={6}
-          placeholder={"TC No\tAd Soyad\tGörev\n12345678901\tAhmet Yılmaz\tOperatör"}
+          placeholder={"TC No\tAd Soyad\tGörev\tİşe Giriş\n12345678901\tAhmet Yılmaz\tOperatör\t15.06.2023\n98765432101\tAyşe Kaya\tMühendis\t01.03.2024"}
           style={{ width: "100%", padding: "10px 14px", background: "#111827", border: "1px solid #374151", borderRadius: 8, color: "#e5e7eb", fontSize: 13, resize: "vertical", boxSizing: "border-box", fontFamily: "monospace" }} />
       </div>
       {karsilastirSonuc && (
@@ -670,23 +692,4 @@ export default function App() {
           </div>
           <div style={{ display: "flex", gap: 2 }}>
             {[["dashboard","📊 Dashboard"],["personel","👷 Personel"],["rapor","📋 Raporlar"]].map(([id, label]) => (
-              <button key={id} onClick={() => setSayfa(id)} style={{ padding: "8px 16px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, background: sayfa === id ? "#1d4ed8" : "transparent", color: sayfa === id ? "#fff" : "#6b7280" }}>{label}</button>
-            ))}
-          </div>
-          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12 }}>
-            <span style={{ fontSize: 12, color: "#475569" }}>{oturum?.user?.email}</span>
-            <Btn onClick={cikisYap} variant="danger" style={{ fontSize: 12, padding: "6px 12px" }}>Çıkış</Btn>
-          </div>
-        </div>
-      </div>
-      <div style={{ maxWidth: 1400, margin: "0 auto", padding: 24 }}>
-        {sayfa === "dashboard" && <Dashboard />}
-        {sayfa === "personel"  && <PersonelSayfa />}
-        {sayfa === "rapor"     && <RaporSayfa />}
-      </div>
-      {modal === "firma-ekle"        && <FirmaEkleModal />}
-      {modal === "personel-guncelle" && <PersonelGuncelleModal />}
-      {secPersonel && <PersonelDetay p={secPersonel} />}
-    </div>
-  );
-}
+              <button key={id} onClick={() => setSayfa(id)} style={{ padding: "8px 16px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, background: sayfa === id ? "#1d4ed8" : "transpa
