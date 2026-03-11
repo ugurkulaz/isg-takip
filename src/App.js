@@ -937,7 +937,220 @@ export default function App() {
   };
 
 
-  const RaporSayfa = () => {
+  const EgitimTakipSayfa = () => {
+    const [secFirmaId, setSecFirmaId] = useState(firmalar[0]?.id || null);
+    const [egitimTuru, setEgitimTuru] = useState("isg");
+    const [topluMetin, setTopluMetin] = useState("");
+    const [topluSonuc, setTopluSonuc] = useState(null);
+    const [tekForm, setTekForm] = useState({ tc: "", tarih: "" });
+    const [mod, setMod] = useState("liste"); // "liste" | "tek" | "toplu"
+    const [yukleniyor2, setYukleniyor2] = useState(false);
+
+    const firma = firmalar.find(f => f.id === secFirmaId);
+    const firmaPersonel = aktifPersonel.filter(p => p.firma_id === secFirmaId);
+
+    // Firmadaki personelin son eğitim bilgileriyle liste
+    const egitimListesi = firmaPersonel.map(p => {
+      const son = sonEgitimBul(p.id, egitimTuru);
+      const periyot = EGITIM_TURLERI.find(e => e.id === egitimTuru)?.periyotFn(firma?.tehlike_sinifi);
+      const d = durumHesapla(son, periyot);
+      return { ...p, son, d };
+    }).sort((a, b) => b.d.onc - a.d.onc);
+
+    // Tek kişi kaydet
+    const tekKaydet = async () => {
+      if (!tekForm.tc || !tekForm.tarih) return;
+      const p = firmaPersonel.find(x => x.tc_no === tekForm.tc);
+      if (!p) { alert("Bu TC No firmada bulunamadı!"); return; }
+      setYukleniyor2(true);
+      await supabase.from("egitimler").insert({ personel_id: p.id, egitim_turu: egitimTuru, egitim_tarihi: tekForm.tarih });
+      await veriYukle();
+      setTekForm({ tc: "", tarih: "" });
+      setYukleniyor2(false);
+    };
+
+    // Toplu kaydet - TC No ve tarih listesi
+    const topluOnayla = async () => {
+      if (!topluSonuc) return;
+      setYukleniyor2(true);
+      for (const kayit of topluSonuc.basarili) {
+        await supabase.from("egitimler").insert({ personel_id: kayit.p.id, egitim_turu: egitimTuru, egitim_tarihi: kayit.tarih });
+      }
+      await veriYukle();
+      setTopluSonuc(null);
+      setTopluMetin("");
+      setYukleniyor2(false);
+      alert(`✅ ${topluSonuc.basarili.length} kayıt eklendi!`);
+    };
+
+    // Toplu parse
+    const topluKarsilastir = () => {
+      const satirlar = topluMetin.trim().split("\n").map(s => s.trim()).filter(Boolean);
+      const basarili = [], hatali = [];
+      satirlar.forEach(satir => {
+        const parcalar = satir.split(/[\t,;]/);
+        const tc = parcalar[0]?.trim();
+        let tarih = parcalar[parcalar.length - 1]?.trim();
+        // DD.MM.YYYY → YYYY-MM-DD
+        if (tarih && /^\d{2}\.\d{2}\.\d{4}$/.test(tarih)) {
+          const [g, a, y] = tarih.split("."); tarih = `${y}-${a}-${g}`;
+        }
+        const p = firmaPersonel.find(x => x.tc_no === tc);
+        if (p && tarih) basarili.push({ p, tarih });
+        else hatali.push({ satir, sebep: !p ? "TC bulunamadı" : "Tarih eksik" });
+      });
+      setTopluSonuc({ basarili, hatali });
+    };
+
+    const egitimAdi = EGITIM_TURLERI.find(e => e.id === egitimTuru)?.ad || "";
+
+    return (
+      <div>
+        {/* Üst kontroller */}
+        <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap", alignItems: "center" }}>
+          <select value={secFirmaId || ""} onChange={e => setSecFirmaId(Number(e.target.value))}
+            style={{ padding: "10px 14px", background: "#111827", border: "1px solid #374151", borderRadius: 8, color: "#e5e7eb", fontSize: 14, minWidth: 220 }}>
+            {firmalar.map(f => <option key={f.id} value={f.id}>{f.ad}</option>)}
+          </select>
+          <select value={egitimTuru} onChange={e => setEgitimTuru(e.target.value)}
+            style={{ padding: "10px 14px", background: "#111827", border: "1px solid #374151", borderRadius: 8, color: "#e5e7eb", fontSize: 14 }}>
+            {EGITIM_TURLERI.map(e => <option key={e.id} value={e.id}>{e.icon} {e.ad}</option>)}
+          </select>
+          <div style={{ display: "flex", gap: 6, marginLeft: "auto" }}>
+            {[["liste","📋 Liste"],["tek","➕ Tek Kayıt"],["toplu","📤 Toplu Yükle"]].map(([id, label]) => (
+              <button key={id} onClick={() => setMod(id)} style={{
+                padding: "9px 16px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600,
+                background: mod === id ? "#1d4ed8" : "#111827", color: mod === id ? "#fff" : "#6b7280"
+              }}>{label}</button>
+            ))}
+          </div>
+        </div>
+
+        {/* LİSTE MODU */}
+        {mod === "liste" && (
+          <Card>
+            <CardHeader title={`📋 ${firma?.ad || ""} — ${egitimAdi} Listesi (${egitimListesi.length} personel)`} />
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ background: "#0f172a" }}>
+                  {["Ad Soyad", "Görev", "TC No", "Son Eğitim", "Durum", ""].map(h => (
+                    <th key={h} style={{ padding: "11px 16px", textAlign: "left", fontSize: 11, color: "#6b7280", fontWeight: 700, textTransform: "uppercase" }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {egitimListesi.map((p, i) => (
+                  <tr key={p.id} style={{ borderTop: "1px solid #1f2937", background: i % 2 === 0 ? "transparent" : "#0f172a22" }}>
+                    <td style={{ padding: "12px 16px", fontWeight: 600, color: "#f3f4f6" }}>{p.ad_soyad}</td>
+                    <td style={{ padding: "12px 16px", color: "#9ca3af", fontSize: 13 }}>{p.gorev}</td>
+                    <td style={{ padding: "12px 16px", color: "#6b7280", fontSize: 12, fontFamily: "monospace" }}>{p.tc_no}</td>
+                    <td style={{ padding: "12px 16px", color: "#9ca3af", fontSize: 13 }}>{p.son ? formatTarih(p.son) : "—"}</td>
+                    <td style={{ padding: "12px 16px" }}><Badge d={p.d} /></td>
+                    <td style={{ padding: "12px 16px" }}>
+                      <Btn variant="secondary" style={{ fontSize: 12, padding: "5px 10px" }} onClick={() => { setTekForm({ tc: p.tc_no, tarih: "" }); setMod("tek"); }}>Güncelle</Btn>
+                    </td>
+                  </tr>
+                ))}
+                {egitimListesi.length === 0 && <tr><td colSpan={6} style={{ padding: 40, textAlign: "center", color: "#6b7280" }}>Bu firmada aktif personel yok.</td></tr>}
+              </tbody>
+            </table>
+          </Card>
+        )}
+
+        {/* TEK KAYIT MODU */}
+        {mod === "tek" && (
+          <Card>
+            <CardHeader title={`➕ Tek Kayıt — ${egitimAdi}`} />
+            <div style={{ padding: 20 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+                <div>
+                  <label style={{ display: "block", fontSize: 12, color: "#6b7280", marginBottom: 6 }}>TC No veya İsim Seç</label>
+                  <select value={tekForm.tc} onChange={e => setTekForm(f => ({ ...f, tc: e.target.value }))}
+                    style={{ width: "100%", padding: "9px 12px", background: "#0f172a", border: "1px solid #374151", borderRadius: 8, color: "#e5e7eb", fontSize: 13 }}>
+                    <option value="">-- Personel Seçin --</option>
+                    {firmaPersonel.map(p => <option key={p.id} value={p.tc_no}>{p.ad_soyad} — {p.tc_no}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: 12, color: "#6b7280", marginBottom: 6 }}>Eğitim Tarihi</label>
+                  <input type="date" value={tekForm.tarih} onChange={e => setTekForm(f => ({ ...f, tarih: e.target.value }))}
+                    style={{ width: "100%", padding: "9px 12px", background: "#0f172a", border: "1px solid #374151", borderRadius: 8, color: "#e5e7eb", fontSize: 13, boxSizing: "border-box" }} />
+                </div>
+              </div>
+              {tekForm.tc && (
+                <div style={{ background: "#111827", borderRadius: 8, padding: 12, marginBottom: 16, fontSize: 13, color: "#9ca3af" }}>
+                  {(() => { const p = firmaPersonel.find(x => x.tc_no === tekForm.tc); return p ? `👤 ${p.ad_soyad} · ${p.gorev} · ${p.tc_no}` : ""; })()}
+                </div>
+              )}
+              <Btn onClick={tekKaydet} disabled={!tekForm.tc || !tekForm.tarih || yukleniyor2} variant="success" style={{ minWidth: 160 }}>
+                {yukleniyor2 ? "Kaydediliyor..." : "✅ Eğitim Kaydet"}
+              </Btn>
+            </div>
+          </Card>
+        )}
+
+        {/* TOPLU YÜKLEME MODU */}
+        {mod === "toplu" && (
+          <Card>
+            <CardHeader title={`📤 Toplu Yükleme — ${egitimAdi}`} />
+            <div style={{ padding: 20 }}>
+              <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 8, background: "#0f172a", borderRadius: 8, padding: 12 }}>
+                📌 Format: <span style={{ color: "#60a5fa", fontFamily: "monospace" }}>TC No [TAB veya ;] Eğitim Tarihi (DD.MM.YYYY veya YYYY-MM-DD)</span><br/>
+                Örnek: <span style={{ color: "#4ade80", fontFamily: "monospace" }}>12345678901	15.03.2025</span>
+              </div>
+              <textarea value={topluMetin} onChange={e => setTopluMetin(e.target.value)} rows={8}
+                placeholder={"12345678901\t15.03.2025\n98765432101\t20.03.2025\n..."}
+                style={{ width: "100%", padding: "10px 14px", background: "#0f172a", border: "1px solid #374151", borderRadius: 8, color: "#e5e7eb", fontSize: 13, resize: "vertical", boxSizing: "border-box", fontFamily: "monospace", marginBottom: 12 }} />
+              <div style={{ display: "flex", gap: 10 }}>
+                <Btn onClick={topluKarsilastir} disabled={!topluMetin.trim()} variant="secondary">🔍 Kontrol Et</Btn>
+                {topluSonuc && <Btn onClick={topluOnayla} variant="success" disabled={!topluSonuc.basarili.length || yukleniyor2}>
+                  {yukleniyor2 ? "Kaydediliyor..." : `✅ ${topluSonuc.basarili.length} Kaydı Onayla`}
+                </Btn>}
+                {topluSonuc && <Btn onClick={() => setTopluSonuc(null)} variant="danger">İptal</Btn>}
+              </div>
+
+              {topluSonuc && (
+                <div style={{ marginTop: 20 }}>
+                  {topluSonuc.basarili.length > 0 && (
+                    <div style={{ marginBottom: 14 }}>
+                      <div style={{ fontWeight: 700, color: "#4ade80", marginBottom: 8 }}>✅ Eklenecek ({topluSonuc.basarili.length})</div>
+                      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                        <thead><tr style={{ background: "#0f172a" }}>
+                          {["Ad Soyad", "Görev", "TC No", "Eğitim Tarihi"].map(h => <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontSize: 11, color: "#6b7280", fontWeight: 700 }}>{h}</th>)}
+                        </tr></thead>
+                        <tbody>
+                          {topluSonuc.basarili.map((k, i) => (
+                            <tr key={i} style={{ borderTop: "1px solid #1f2937" }}>
+                              <td style={{ padding: "9px 12px", color: "#f3f4f6", fontSize: 13 }}>{k.p.ad_soyad}</td>
+                              <td style={{ padding: "9px 12px", color: "#9ca3af", fontSize: 13 }}>{k.p.gorev}</td>
+                              <td style={{ padding: "9px 12px", color: "#6b7280", fontSize: 12, fontFamily: "monospace" }}>{k.p.tc_no}</td>
+                              <td style={{ padding: "9px 12px", color: "#4ade80", fontSize: 13 }}>{formatTarih(k.tarih)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                  {topluSonuc.hatali.length > 0 && (
+                    <div>
+                      <div style={{ fontWeight: 700, color: "#f87171", marginBottom: 8 }}>❌ Hatalı Satırlar ({topluSonuc.hatali.length})</div>
+                      {topluSonuc.hatali.map((h, i) => (
+                        <div key={i} style={{ background: "#1f0707", borderRadius: 6, padding: "7px 12px", marginBottom: 4, fontSize: 12, color: "#fca5a5" }}>
+                          <span style={{ fontFamily: "monospace" }}>{h.satir}</span> — {h.sebep}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </Card>
+        )}
+      </div>
+    );
+  };
+
+
     const [secFirmaId, setSecFirmaId] = useState(firmalar[0]?.id || null);
     const [aktifRapor, setAktifRapor] = useState("egitim");
     const firma = firmalar.find(f => f.id === secFirmaId);
@@ -1114,10 +1327,11 @@ export default function App() {
   );
 
   const NAV_ITEMS = [
-    { id: "dashboard",  label: "Ana Sayfa",   icon: "🏠" },
-    { id: "personel",   label: "Personel",    icon: "👷" },
-    { id: "dokumanlar", label: "Dökümanlar",  icon: "📁" },
-    { id: "rapor",      label: "Raporlar",    icon: "📋" },
+    { id: "dashboard",    label: "Ana Sayfa",    icon: "🏠" },
+    { id: "personel",     label: "Personel",     icon: "👷" },
+    { id: "egitimtakip",  label: "Eğitim Takip", icon: "🎓" },
+    { id: "dokumanlar",   label: "Dökümanlar",   icon: "📁" },
+    { id: "rapor",        label: "Raporlar",     icon: "📋" },
   ];
 
   return (
@@ -1158,10 +1372,11 @@ export default function App() {
       </div>
       {/* ── İÇERİK ── */}
       <div style={{ flex: 1, padding: 28, overflowY: "auto" }}>
-        {sayfa === "dashboard"  && <Dashboard />}
-        {sayfa === "personel"   && <PersonelSayfa />}
-        {sayfa === "dokumanlar" && <DokumanlarSayfa />}
-        {sayfa === "rapor"      && <RaporSayfa />}
+        {sayfa === "dashboard"   && <Dashboard />}
+        {sayfa === "personel"    && <PersonelSayfa />}
+        {sayfa === "egitimtakip" && <EgitimTakipSayfa />}
+        {sayfa === "dokumanlar"  && <DokumanlarSayfa />}
+        {sayfa === "rapor"       && <RaporSayfa />}
       </div>
       {modal === "firma-ekle"        && <FirmaEkleModal />}
       {(modal === "personel-guncelle" || modal === "import") && <ImportModal />}
