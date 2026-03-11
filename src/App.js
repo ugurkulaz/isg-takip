@@ -232,7 +232,19 @@ export default function App() {
   const aktifPersonel = useMemo(() => personel.filter(p => p.aktif), [personel]);
 
   const sonEgitimBul = (personelId, tur) => {
-    const kayitlar = egitimler.filter(e => e.personel_id === personelId && e.egitim_turu === tur);
+    const turStr = String(tur);
+    // egitimTurleri'nde bu tur'a karşılık gelen entry'yi bul (hem id hem eski string adla)
+    const etEntry = egitimTurleri.find(e =>
+      String(e.id) === turStr || (e.ad_slug && e.ad_slug === turStr)
+    );
+    const kayitlar = egitimler.filter(e => {
+      if (e.personel_id !== personelId) return false;
+      const kayitTur = String(e.egitim_turu);
+      if (kayitTur === turStr) return true;
+      // Numeric ID ile eşleştir
+      if (etEntry && kayitTur === String(etEntry.id)) return true;
+      return false;
+    });
     if (!kayitlar.length) return null;
     return kayitlar.sort((a, b) => new Date(b.egitim_tarihi) - new Date(a.egitim_tarihi))[0].egitim_tarihi;
   };
@@ -254,7 +266,7 @@ export default function App() {
     const isgTur = egitimTurleri[0];
     fps.forEach(p => {
       if (isgTur) {
-        const d = durumHesapla(sonEgitimBul(p.id, isgTur.id), isgTur.periyotFn(f.tehlike_sinifi), "Eğitim Eksik");
+        const d = durumHesapla(sonEgitimBul(p.id, String(isgTur.id)), isgTur.periyotFn(f.tehlike_sinifi), "Eğitim Eksik");
         if (d.onc >= 3) egitimKritik++;
       }
       MUAYENE_TURLERI.forEach(m => {
@@ -530,7 +542,7 @@ export default function App() {
         </div>
         {aktifTab === "egitim" && egitimTurleri.map(e => {
           const periyot = e.periyotFn(firma?.tehlike_sinifi);
-          const tumKayitlar = egitimler.filter(x => x.personel_id === p.id && x.egitim_turu === e.id).sort((a,b) => new Date(b.egitim_tarihi) - new Date(a.egitim_tarihi));
+          const tumKayitlar = egitimler.filter(x => x.personel_id === p.id && String(x.egitim_turu) === String(e.id)).sort((a,b) => new Date(b.egitim_tarihi) - new Date(a.egitim_tarihi));
           const son = tumKayitlar[0]?.egitim_tarihi || null;
           const d = durumHesapla(son, periyot, "Eğitim Eksik");
           return (
@@ -760,7 +772,8 @@ export default function App() {
             <tbody>
               {fps.map((p, i) => {
                 const f = firmalar.find(x => x.id === p.firma_id);
-                const isgTarih = sonEgitimBul(p.id, "isg");
+                const isgTur = egitimTurleri[0];
+                const isgTarih = isgTur ? sonEgitimBul(p.id, String(isgTur.id)) : null;
                 const perTarih = sonMuayeneBul(p.id, "periyodik");
                 const isgD = durumHesapla(isgTarih, egitimTurleri[0]?.periyotFn(f?.tehlike_sinifi), "Eğitim Eksik");
                 const perD = durumHesapla(perTarih, MUAYENE_TURLERI[0].periyotFn(f?.tehlike_sinifi), "Muayene Eksik");
