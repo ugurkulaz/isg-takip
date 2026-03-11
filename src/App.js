@@ -692,4 +692,23 @@ export default function App() {
           </div>
           <div style={{ display: "flex", gap: 2 }}>
             {[["dashboard","📊 Dashboard"],["personel","👷 Personel"],["rapor","📋 Raporlar"]].map(([id, label]) => (
-              <button key={id} onClick={() => setSayfa(id)} style={{ padding: "8px 16px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, background: sayfa === id ? "#1d4ed8" : "transpa
+              <button key={id} onClick={() => setSayfa(id)} style={{ padding: "8px 16px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, background: sayfa === id ? "#1d4ed8" : "transparent", color: sayfa === id ? "#fff" : "#6b7280" }}>{label}</button>
+            ))}
+          </div>
+          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ fontSize: 12, color: "#475569" }}>{oturum?.user?.email}</span>
+            <Btn onClick={cikisYap} variant="danger" style={{ fontSize: 12, padding: "6px 12px" }}>Çıkış</Btn>
+          </div>
+        </div>
+      </div>
+      <div style={{ maxWidth: 1400, margin: "0 auto", padding: 24 }}>
+        {sayfa === "dashboard" && <Dashboard />}
+        {sayfa === "personel"  && <PersonelSayfa />}
+        {sayfa === "rapor"     && <RaporSayfa />}
+      </div>
+      {modal === "firma-ekle"        && <FirmaEkleModal />}
+      {modal === "personel-guncelle" && <PersonelGuncelleModal />}
+      {secPersonel && <PersonelDetay p={secPersonel} />}
+    </div>
+  );
+}
