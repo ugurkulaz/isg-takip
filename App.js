@@ -7,12 +7,7 @@ const TEHLIKE = {
   "Tehlikeli":     { renk: "#fbbf24", bg: "#1c1403", sure: 24, icon: "🟡" },
   "Çok Tehlikeli": { renk: "#f87171", bg: "#1f0707", sure: 12, icon: "🔴" },
 };
-const EGITIM_TURLERI = [
-  { id: "isg",     ad: "İSG Temel Eğitimi",  icon: "🛡️", periyotFn: (t) => TEHLIKE[t]?.sure || 24 },
-  { id: "yangin",  ad: "Yangın Güvenliği",   icon: "🔥", periyotFn: () => 12 },
-  { id: "ilkyard", ad: "İlk Yardım",         icon: "🏥", periyotFn: () => 36 },
-  { id: "kkd",     ad: "KKD Kullanımı",      icon: "⛑", periyotFn: () => 24 },
-];
+// EGITIM_TURLERI artık Supabase'den yükleniyor (aşağıda state olarak)
 const MUAYENE_TURLERI = [
   { id: "periyodik", ad: "Periyodik Sağlık Muayenesi", icon: "🩺", periyotFn: (t) => TEHLIKE[t]?.sure || 24 },
   { id: "ise_giris", ad: "İşe Giriş Muayenesi",        icon: "📋", periyotFn: () => null },
@@ -172,6 +167,7 @@ export default function App() {
   const [muayeneler, setMuayeneler] = useState([]);
   const [sertifikalar, setSertifikalar] = useState([]);
   const [dokumanlar, setDokumanlar] = useState([]);
+  const [egitimTurleri, setEgitimTurleri] = useState([]);
   const [secFirmaDetay, setSecFirmaDetay] = useState(null);
   const [yukleniyor, setYukleniyor] = useState(true);
   const [secFirma, setSecFirma] = useState(null);
@@ -210,13 +206,14 @@ export default function App() {
   // ─── VERİ YÜKLEME ──────────────────────────────────────────────────────────
   const veriYukle = async () => {
     setYukleniyor(true);
-    const [f, p, e, m, s, d] = await Promise.all([
+    const [f, p, e, m, s, d, et] = await Promise.all([
       supabase.from("firmalar").select("*").order("ad"),
       supabase.from("personel").select("*").order("ad_soyad"),
       supabase.from("egitimler").select("*"),
       supabase.from("muayeneler").select("*"),
       supabase.from("sertifikalar").select("*"),
       supabase.from("dokumanlar").select("*"),
+      supabase.from("egitim_turleri").select("*").eq("aktif", true).order("id"),
     ]);
     if (f.data) setFirmalar(f.data);
     if (p.data) setPersonel(p.data);
@@ -224,6 +221,10 @@ export default function App() {
     if (m.data) setMuayeneler(m.data);
     if (s.data) setSertifikalar(s.data);
     if (d.data) setDokumanlar(d.data);
+    if (et.data) setEgitimTurleri(et.data.map(t => ({
+      ...t,
+      periyotFn: () => t.periyot,
+    })));
     setYukleniyor(false);
   };
 
@@ -248,22 +249,30 @@ export default function App() {
 
   const firmaIstatistik = useMemo(() => firmalar.map(f => {
     const fps = aktifPersonel.filter(p => p.firma_id === f.id);
-    let kritikSay = 0;
+    let egitimKritik = 0, muayeneKritik = 0;
     fps.forEach(p => {
-      EGITIM_TURLERI.forEach(e => {
+      egitimTurleri.forEach(e => {
         const d = durumHesapla(sonEgitimBul(p.id, e.id), e.periyotFn(f.tehlike_sinifi));
-        if (d.onc >= 3) kritikSay++;
+        if (d.onc >= 3) egitimKritik++;
+      });
+      MUAYENE_TURLERI.forEach(m => {
+        const periyot = m.periyotFn(f.tehlike_sinifi);
+        if (!periyot) return;
+        const d = durumHesapla(sonMuayeneBul(p.id, m.id), periyot);
+        if (d.onc >= 3) muayeneKritik++;
       });
     });
-    return { ...f, t: TEHLIKE[f.tehlike_sinifi] || TEHLIKE["Tehlikeli"], personelSay: fps.length, kritikSay };
-  }), [firmalar, aktifPersonel, egitimler]);
+    const evrakEksik = dokumanlar.filter(d => d.firma_id === f.id && (d.durum === "YOK" || d.durum === "PLANLANACAK")).length;
+    const kritikSay = egitimKritik + muayeneKritik;
+    return { ...f, t: TEHLIKE[f.tehlike_sinifi] || TEHLIKE["Tehlikeli"], personelSay: fps.length, kritikSay, egitimKritik, muayeneKritik, evrakEksik };
+  }), [firmalar, aktifPersonel, egitimler, muayeneler, dokumanlar, egitimTurleri]);
 
   const genelIstat = useMemo(() => {
     let kritik = 0, yaklasan = 0, guncel = 0;
     aktifPersonel.forEach(p => {
       const f = firmalar.find(x => x.id === p.firma_id);
       if (!f) return;
-      EGITIM_TURLERI.forEach(e => {
+      egitimTurleri.forEach(e => {
         const d = durumHesapla(sonEgitimBul(p.id, e.id), e.periyotFn(f.tehlike_sinifi));
         if (d.onc >= 3) kritik++;
         else if (d.onc === 2) yaklasan++;
@@ -271,7 +280,7 @@ export default function App() {
       });
     });
     return { toplam: aktifPersonel.length, firmaSay: firmalar.length, kritik, yaklasan, guncel };
-  }, [aktifPersonel, firmalar, egitimler]);
+  }, [aktifPersonel, firmalar, egitimler, egitimTurleri]);
 
   // ─── CRUD ──────────────────────────────────────────────────────────────────
   const firmaEkle = async (data) => {
@@ -676,7 +685,7 @@ export default function App() {
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr style={{ background: "#0f172a" }}>
-              {["Firma", "Sektör", "Tehlike", "Personel", "Kritik Kayıt", ""].map(h => (
+              {["Firma", "Sektör", "Tehlike", "Personel", "Eğitim", "Sağlık", "Evrak", ""].map(h => (
                 <th key={h} style={{ padding: "11px 16px", textAlign: "left", fontSize: 11, color: "#6b7280", fontWeight: 700, textTransform: "uppercase" }}>{h}</th>
               ))}
             </tr>
@@ -691,9 +700,19 @@ export default function App() {
                 </td>
                 <td style={{ padding: "13px 16px", color: "#d1d5db" }}>👷 {f.personelSay}</td>
                 <td style={{ padding: "13px 16px" }}>
-                  {f.kritikSay > 0
-                    ? <span style={{ background: "#1f0707", color: "#f87171", borderRadius: 6, padding: "3px 10px", fontSize: 13, fontWeight: 700 }}>🚨 {f.kritikSay}</span>
-                    : <span style={{ color: "#4ade80", fontSize: 13 }}>✅ Temiz</span>}
+                  {f.egitimKritik > 0
+                    ? <span style={{ background: "#1f0707", color: "#f87171", borderRadius: 6, padding: "3px 10px", fontSize: 13, fontWeight: 700 }}>🚨 {f.egitimKritik}</span>
+                    : <span style={{ color: "#4ade80", fontSize: 13 }}>✅ Uygun</span>}
+                </td>
+                <td style={{ padding: "13px 16px" }}>
+                  {f.muayeneKritik > 0
+                    ? <span style={{ background: "#1f0707", color: "#f87171", borderRadius: 6, padding: "3px 10px", fontSize: 13, fontWeight: 700 }}>🚨 {f.muayeneKritik}</span>
+                    : <span style={{ color: "#4ade80", fontSize: 13 }}>✅ Uygun</span>}
+                </td>
+                <td style={{ padding: "13px 16px" }}>
+                  {f.evrakEksik > 0
+                    ? <span style={{ background: "#1c1403", color: "#fbbf24", borderRadius: 6, padding: "3px 10px", fontSize: 13, fontWeight: 700 }}>⚠️ {f.evrakEksik}</span>
+                    : <span style={{ color: "#4ade80", fontSize: 13 }}>✅ Uygun</span>}
                 </td>
                 <td style={{ padding: "13px 16px", display: "flex", gap: 8 }}>
                   <Btn onClick={() => { setSecFirma(f); setSayfa("personel"); }} variant="secondary" style={{ fontSize: 12, padding: "6px 12px" }}>Personel →</Btn>
@@ -919,9 +938,340 @@ export default function App() {
   };
 
 
-  const RaporSayfa = () => {
+  const EgitimTakipSayfa = () => {
     const [secFirmaId, setSecFirmaId] = useState(firmalar[0]?.id || null);
-    const [aktifRapor, setAktifRapor] = useState("egitim");
+    const [egitimTuru, setEgitimTuru] = useState("isg");
+    const [topluMetin, setTopluMetin] = useState("");
+    const [topluSonuc, setTopluSonuc] = useState(null);
+    const [tekForm, setTekForm] = useState({ tc: "", tarih: "" });
+    const [mod, setMod] = useState("liste"); // "liste" | "tek" | "toplu"
+    const [yukleniyor2, setYukleniyor2] = useState(false);
+
+    const firma = firmalar.find(f => f.id === secFirmaId);
+    const firmaPersonel = aktifPersonel.filter(p => p.firma_id === secFirmaId);
+
+    // Firmadaki personelin son eğitim bilgileriyle liste
+    const egitimListesi = firmaPersonel.map(p => {
+      const son = sonEgitimBul(p.id, egitimTuru);
+      const periyot = EGITIM_TURLERI.find(e => e.id === egitimTuru)?.periyotFn(firma?.tehlike_sinifi);
+      const d = durumHesapla(son, periyot);
+      return { ...p, son, d };
+    }).sort((a, b) => b.d.onc - a.d.onc);
+
+    // Tek kişi kaydet
+    const tekKaydet = async () => {
+      if (!tekForm.tc || !tekForm.tarih) return;
+      const p = firmaPersonel.find(x => x.tc_no === tekForm.tc);
+      if (!p) { alert("Bu TC No firmada bulunamadı!"); return; }
+      setYukleniyor2(true);
+      await supabase.from("egitimler").insert({ personel_id: p.id, egitim_turu: egitimTuru, egitim_tarihi: tekForm.tarih });
+      await veriYukle();
+      setTekForm({ tc: "", tarih: "" });
+      setYukleniyor2(false);
+    };
+
+    // Toplu kaydet - TC No ve tarih listesi
+    const topluOnayla = async () => {
+      if (!topluSonuc) return;
+      setYukleniyor2(true);
+      for (const kayit of topluSonuc.basarili) {
+        await supabase.from("egitimler").insert({ personel_id: kayit.p.id, egitim_turu: egitimTuru, egitim_tarihi: kayit.tarih });
+      }
+      await veriYukle();
+      setTopluSonuc(null);
+      setTopluMetin("");
+      setYukleniyor2(false);
+      alert(`✅ ${topluSonuc.basarili.length} kayıt eklendi!`);
+    };
+
+    // Toplu parse
+    const topluKarsilastir = () => {
+      const satirlar = topluMetin.trim().split("\n").map(s => s.trim()).filter(Boolean);
+      const basarili = [], hatali = [];
+      satirlar.forEach(satir => {
+        const parcalar = satir.split(/[\t,;]/);
+        const tc = parcalar[0]?.trim();
+        let tarih = parcalar[parcalar.length - 1]?.trim();
+        // DD.MM.YYYY → YYYY-MM-DD
+        if (tarih && /^\d{2}\.\d{2}\.\d{4}$/.test(tarih)) {
+          const [g, a, y] = tarih.split("."); tarih = `${y}-${a}-${g}`;
+        }
+        const p = firmaPersonel.find(x => x.tc_no === tc);
+        if (p && tarih) basarili.push({ p, tarih });
+        else hatali.push({ satir, sebep: !p ? "TC bulunamadı" : "Tarih eksik" });
+      });
+      setTopluSonuc({ basarili, hatali });
+    };
+
+    const egitimAdi = EGITIM_TURLERI.find(e => e.id === egitimTuru)?.ad || "";
+
+    return (
+      <div>
+        {/* Üst kontroller */}
+        <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap", alignItems: "center" }}>
+          <select value={secFirmaId || ""} onChange={e => setSecFirmaId(Number(e.target.value))}
+            style={{ padding: "10px 14px", background: "#111827", border: "1px solid #374151", borderRadius: 8, color: "#e5e7eb", fontSize: 14, minWidth: 220 }}>
+            {firmalar.map(f => <option key={f.id} value={f.id}>{f.ad}</option>)}
+          </select>
+          <select value={egitimTuru} onChange={e => setEgitimTuru(e.target.value)}
+            style={{ padding: "10px 14px", background: "#111827", border: "1px solid #374151", borderRadius: 8, color: "#e5e7eb", fontSize: 14 }}>
+            {EGITIM_TURLERI.map(e => <option key={e.id} value={e.id}>{e.icon} {e.ad}</option>)}
+          </select>
+          <div style={{ display: "flex", gap: 6, marginLeft: "auto" }}>
+            {[["liste","📋 Liste"],["tek","➕ Tek Kayıt"],["toplu","📤 Toplu Yükle"]].map(([id, label]) => (
+              <button key={id} onClick={() => setMod(id)} style={{
+                padding: "9px 16px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600,
+                background: mod === id ? "#1d4ed8" : "#111827", color: mod === id ? "#fff" : "#6b7280"
+              }}>{label}</button>
+            ))}
+          </div>
+        </div>
+
+        {/* LİSTE MODU */}
+        {mod === "liste" && (
+          <Card>
+            <CardHeader title={`📋 ${firma?.ad || ""} — ${egitimAdi} Listesi (${egitimListesi.length} personel)`} />
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ background: "#0f172a" }}>
+                  {["Ad Soyad", "Görev", "TC No", "Son Eğitim", "Durum", ""].map(h => (
+                    <th key={h} style={{ padding: "11px 16px", textAlign: "left", fontSize: 11, color: "#6b7280", fontWeight: 700, textTransform: "uppercase" }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {egitimListesi.map((p, i) => (
+                  <tr key={p.id} style={{ borderTop: "1px solid #1f2937", background: i % 2 === 0 ? "transparent" : "#0f172a22" }}>
+                    <td style={{ padding: "12px 16px", fontWeight: 600, color: "#f3f4f6" }}>{p.ad_soyad}</td>
+                    <td style={{ padding: "12px 16px", color: "#9ca3af", fontSize: 13 }}>{p.gorev}</td>
+                    <td style={{ padding: "12px 16px", color: "#6b7280", fontSize: 12, fontFamily: "monospace" }}>{p.tc_no}</td>
+                    <td style={{ padding: "12px 16px", color: "#9ca3af", fontSize: 13 }}>{p.son ? formatTarih(p.son) : "—"}</td>
+                    <td style={{ padding: "12px 16px" }}><Badge d={p.d} /></td>
+                    <td style={{ padding: "12px 16px" }}>
+                      <Btn variant="secondary" style={{ fontSize: 12, padding: "5px 10px" }} onClick={() => { setTekForm({ tc: p.tc_no, tarih: "" }); setMod("tek"); }}>Güncelle</Btn>
+                    </td>
+                  </tr>
+                ))}
+                {egitimListesi.length === 0 && <tr><td colSpan={6} style={{ padding: 40, textAlign: "center", color: "#6b7280" }}>Bu firmada aktif personel yok.</td></tr>}
+              </tbody>
+            </table>
+          </Card>
+        )}
+
+        {/* TEK KAYIT MODU */}
+        {mod === "tek" && (
+          <Card>
+            <CardHeader title={`➕ Tek Kayıt — ${egitimAdi}`} />
+            <div style={{ padding: 20 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+                <div>
+                  <label style={{ display: "block", fontSize: 12, color: "#6b7280", marginBottom: 6 }}>TC No veya İsim Seç</label>
+                  <select value={tekForm.tc} onChange={e => setTekForm(f => ({ ...f, tc: e.target.value }))}
+                    style={{ width: "100%", padding: "9px 12px", background: "#0f172a", border: "1px solid #374151", borderRadius: 8, color: "#e5e7eb", fontSize: 13 }}>
+                    <option value="">-- Personel Seçin --</option>
+                    {firmaPersonel.map(p => <option key={p.id} value={p.tc_no}>{p.ad_soyad} — {p.tc_no}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: 12, color: "#6b7280", marginBottom: 6 }}>Eğitim Tarihi</label>
+                  <input type="date" value={tekForm.tarih} onChange={e => setTekForm(f => ({ ...f, tarih: e.target.value }))}
+                    style={{ width: "100%", padding: "9px 12px", background: "#0f172a", border: "1px solid #374151", borderRadius: 8, color: "#e5e7eb", fontSize: 13, boxSizing: "border-box" }} />
+                </div>
+              </div>
+              {tekForm.tc && (
+                <div style={{ background: "#111827", borderRadius: 8, padding: 12, marginBottom: 16, fontSize: 13, color: "#9ca3af" }}>
+                  {(() => { const p = firmaPersonel.find(x => x.tc_no === tekForm.tc); return p ? `👤 ${p.ad_soyad} · ${p.gorev} · ${p.tc_no}` : ""; })()}
+                </div>
+              )}
+              <Btn onClick={tekKaydet} disabled={!tekForm.tc || !tekForm.tarih || yukleniyor2} variant="success" style={{ minWidth: 160 }}>
+                {yukleniyor2 ? "Kaydediliyor..." : "✅ Eğitim Kaydet"}
+              </Btn>
+            </div>
+          </Card>
+        )}
+
+        {/* TOPLU YÜKLEME MODU */}
+        {mod === "toplu" && (
+          <Card>
+            <CardHeader title={`📤 Toplu Yükleme — ${egitimAdi}`} />
+            <div style={{ padding: 20 }}>
+              <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 8, background: "#0f172a", borderRadius: 8, padding: 12 }}>
+                📌 Format: <span style={{ color: "#60a5fa", fontFamily: "monospace" }}>TC No [TAB veya ;] Eğitim Tarihi (DD.MM.YYYY veya YYYY-MM-DD)</span><br/>
+                Örnek: <span style={{ color: "#4ade80", fontFamily: "monospace" }}>12345678901	15.03.2025</span>
+              </div>
+              <textarea value={topluMetin} onChange={e => setTopluMetin(e.target.value)} rows={8}
+                placeholder={"12345678901\t15.03.2025\n98765432101\t20.03.2025\n..."}
+                style={{ width: "100%", padding: "10px 14px", background: "#0f172a", border: "1px solid #374151", borderRadius: 8, color: "#e5e7eb", fontSize: 13, resize: "vertical", boxSizing: "border-box", fontFamily: "monospace", marginBottom: 12 }} />
+              <div style={{ display: "flex", gap: 10 }}>
+                <Btn onClick={topluKarsilastir} disabled={!topluMetin.trim()} variant="secondary">🔍 Kontrol Et</Btn>
+                {topluSonuc && <Btn onClick={topluOnayla} variant="success" disabled={!topluSonuc.basarili.length || yukleniyor2}>
+                  {yukleniyor2 ? "Kaydediliyor..." : `✅ ${topluSonuc.basarili.length} Kaydı Onayla`}
+                </Btn>}
+                {topluSonuc && <Btn onClick={() => setTopluSonuc(null)} variant="danger">İptal</Btn>}
+              </div>
+
+              {topluSonuc && (
+                <div style={{ marginTop: 20 }}>
+                  {topluSonuc.basarili.length > 0 && (
+                    <div style={{ marginBottom: 14 }}>
+                      <div style={{ fontWeight: 700, color: "#4ade80", marginBottom: 8 }}>✅ Eklenecek ({topluSonuc.basarili.length})</div>
+                      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                        <thead><tr style={{ background: "#0f172a" }}>
+                          {["Ad Soyad", "Görev", "TC No", "Eğitim Tarihi"].map(h => <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontSize: 11, color: "#6b7280", fontWeight: 700 }}>{h}</th>)}
+                        </tr></thead>
+                        <tbody>
+                          {topluSonuc.basarili.map((k, i) => (
+                            <tr key={i} style={{ borderTop: "1px solid #1f2937" }}>
+                              <td style={{ padding: "9px 12px", color: "#f3f4f6", fontSize: 13 }}>{k.p.ad_soyad}</td>
+                              <td style={{ padding: "9px 12px", color: "#9ca3af", fontSize: 13 }}>{k.p.gorev}</td>
+                              <td style={{ padding: "9px 12px", color: "#6b7280", fontSize: 12, fontFamily: "monospace" }}>{k.p.tc_no}</td>
+                              <td style={{ padding: "9px 12px", color: "#4ade80", fontSize: 13 }}>{formatTarih(k.tarih)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                  {topluSonuc.hatali.length > 0 && (
+                    <div>
+                      <div style={{ fontWeight: 700, color: "#f87171", marginBottom: 8 }}>❌ Hatalı Satırlar ({topluSonuc.hatali.length})</div>
+                      {topluSonuc.hatali.map((h, i) => (
+                        <div key={i} style={{ background: "#1f0707", borderRadius: 6, padding: "7px 12px", marginBottom: 4, fontSize: 12, color: "#fca5a5" }}>
+                          <span style={{ fontFamily: "monospace" }}>{h.satir}</span> — {h.sebep}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </Card>
+        )}
+      </div>
+    );
+  };
+
+
+  const AyarlarSayfa = () => {
+    const [form, setForm] = useState({ ad: "", icon: "📚", periyot: 24 });
+    const [duzenleId, setDuzenleId] = useState(null);
+    const [duzenleForm, setDuzenleForm] = useState({});
+    const [kayit, setKayit] = useState(false);
+
+    const ekle = async () => {
+      if (!form.ad) return;
+      setKayit(true);
+      await supabase.from("egitim_turleri").insert({ ad: form.ad, icon: form.icon, periyot: Number(form.periyot) });
+      await veriYukle();
+      setForm({ ad: "", icon: "📚", periyot: 24 });
+      setKayit(false);
+    };
+
+    const guncelle = async (id) => {
+      await supabase.from("egitim_turleri").update({ ad: duzenleForm.ad, icon: duzenleForm.icon, periyot: Number(duzenleForm.periyot) }).eq("id", id);
+      await veriYukle();
+      setDuzenleId(null);
+    };
+
+    const sil = async (id) => {
+      if (!window.confirm("Bu eğitim türünü silmek istediğinize emin misiniz?")) return;
+      await supabase.from("egitim_turleri").update({ aktif: false }).eq("id", id);
+      await veriYukle();
+    };
+
+    const IKONLAR = ["📚","🛡️","🔥","🏥","⛑","⚡","🔧","🚜","🏗","🧯","🦺","📋","🎯","🔑","💊"];
+
+    return (
+      <div>
+        <Card style={{ marginBottom: 20 }}>
+          <CardHeader title="⚙️ Eğitim Türleri Yönetimi" />
+          <div style={{ padding: 20 }}>
+            <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 16 }}>Eğitim türlerini buradan ekleyebilir, düzenleyebilir veya pasife alabilirsiniz.</div>
+            {/* Yeni ekleme formu */}
+            <div style={{ background: "#0f172a", borderRadius: 10, padding: 16, marginBottom: 20, border: "1px solid #1e293b" }}>
+              <div style={{ fontWeight: 700, color: "#f3f4f6", marginBottom: 12, fontSize: 14 }}>➕ Yeni Eğitim Türü Ekle</div>
+              <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr auto", gap: 12, alignItems: "end" }}>
+                <div>
+                  <label style={{ display: "block", fontSize: 12, color: "#6b7280", marginBottom: 5 }}>Eğitim Adı</label>
+                  <input value={form.ad} onChange={e => setForm(f => ({ ...f, ad: e.target.value }))} placeholder="Örn: İş Güvenliği Uzmanlığı"
+                    style={{ width: "100%", padding: "9px 12px", background: "#111827", border: "1px solid #374151", borderRadius: 8, color: "#e5e7eb", fontSize: 13, boxSizing: "border-box" }} />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: 12, color: "#6b7280", marginBottom: 5 }}>İkon</label>
+                  <select value={form.icon} onChange={e => setForm(f => ({ ...f, icon: e.target.value }))}
+                    style={{ width: "100%", padding: "9px 12px", background: "#111827", border: "1px solid #374151", borderRadius: 8, color: "#e5e7eb", fontSize: 18 }}>
+                    {IKONLAR.map(ik => <option key={ik} value={ik}>{ik}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: 12, color: "#6b7280", marginBottom: 5 }}>Periyot (ay)</label>
+                  <input type="number" min="1" max="120" value={form.periyot} onChange={e => setForm(f => ({ ...f, periyot: e.target.value }))}
+                    style={{ width: "100%", padding: "9px 12px", background: "#111827", border: "1px solid #374151", borderRadius: 8, color: "#e5e7eb", fontSize: 13, boxSizing: "border-box" }} />
+                </div>
+                <Btn onClick={ekle} disabled={!form.ad || kayit} variant="success" style={{ padding: "9px 20px" }}>
+                  {kayit ? "..." : "Ekle"}
+                </Btn>
+              </div>
+            </div>
+
+            {/* Mevcut liste */}
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ background: "#0f172a" }}>
+                  {["İkon", "Eğitim Adı", "Periyot", ""].map(h => (
+                    <th key={h} style={{ padding: "10px 16px", textAlign: "left", fontSize: 11, color: "#6b7280", fontWeight: 700, textTransform: "uppercase" }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {egitimTurleri.map((et, i) => (
+                  <tr key={et.id} style={{ borderTop: "1px solid #1f2937" }}>
+                    {duzenleId === et.id ? (
+                      <>
+                        <td style={{ padding: "10px 16px" }}>
+                          <select value={duzenleForm.icon} onChange={e => setDuzenleForm(f => ({ ...f, icon: e.target.value }))}
+                            style={{ padding: "6px 8px", background: "#0f172a", border: "1px solid #374151", borderRadius: 6, color: "#e5e7eb", fontSize: 18 }}>
+                            {IKONLAR.map(ik => <option key={ik} value={ik}>{ik}</option>)}
+                          </select>
+                        </td>
+                        <td style={{ padding: "10px 16px" }}>
+                          <input value={duzenleForm.ad} onChange={e => setDuzenleForm(f => ({ ...f, ad: e.target.value }))}
+                            style={{ width: "100%", padding: "7px 10px", background: "#0f172a", border: "1px solid #374151", borderRadius: 6, color: "#e5e7eb", fontSize: 13 }} />
+                        </td>
+                        <td style={{ padding: "10px 16px" }}>
+                          <input type="number" value={duzenleForm.periyot} onChange={e => setDuzenleForm(f => ({ ...f, periyot: e.target.value }))}
+                            style={{ width: 80, padding: "7px 10px", background: "#0f172a", border: "1px solid #374151", borderRadius: 6, color: "#e5e7eb", fontSize: 13 }} />
+                          <span style={{ color: "#6b7280", fontSize: 12, marginLeft: 6 }}>ay</span>
+                        </td>
+                        <td style={{ padding: "10px 16px", display: "flex", gap: 6 }}>
+                          <Btn variant="success" style={{ fontSize: 12, padding: "5px 12px" }} onClick={() => guncelle(et.id)}>✓ Kaydet</Btn>
+                          <Btn variant="secondary" style={{ fontSize: 12, padding: "5px 12px" }} onClick={() => setDuzenleId(null)}>İptal</Btn>
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td style={{ padding: "12px 16px", fontSize: 22 }}>{et.icon}</td>
+                        <td style={{ padding: "12px 16px", fontWeight: 600, color: "#f3f4f6" }}>{et.ad}</td>
+                        <td style={{ padding: "12px 16px", color: "#9ca3af", fontSize: 13 }}>Her <strong style={{ color: "#60a5fa" }}>{et.periyot}</strong> ayda bir</td>
+                        <td style={{ padding: "12px 16px", display: "flex", gap: 6 }}>
+                          <Btn variant="secondary" style={{ fontSize: 12, padding: "5px 12px" }} onClick={() => { setDuzenleId(et.id); setDuzenleForm({ ad: et.ad, icon: et.icon, periyot: et.periyot }); }}>✏️ Düzenle</Btn>
+                          <Btn variant="danger" style={{ fontSize: 12, padding: "5px 12px" }} onClick={() => sil(et.id)}>Pasife Al</Btn>
+                        </td>
+                      </>
+                    )}
+                  </tr>
+                ))}
+                {egitimTurleri.length === 0 && <tr><td colSpan={4} style={{ padding: 40, textAlign: "center", color: "#6b7280" }}>Henüz eğitim türü yok.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      </div>
+    );
+  };
+
+
+    const [secFirmaId, setSecFirmaId] = useState(firmalar[0]?.id || null);
     const firma = firmalar.find(f => f.id === secFirmaId);
     const firmaPersonel = aktifPersonel.filter(p => p.firma_id === secFirmaId);
 
@@ -1096,10 +1446,12 @@ export default function App() {
   );
 
   const NAV_ITEMS = [
-    { id: "dashboard",  label: "Ana Sayfa",   icon: "🏠" },
-    { id: "personel",   label: "Personel",    icon: "👷" },
-    { id: "dokumanlar", label: "Dökümanlar",  icon: "📁" },
-    { id: "rapor",      label: "Raporlar",    icon: "📋" },
+    { id: "dashboard",    label: "Ana Sayfa",    icon: "🏠" },
+    { id: "personel",     label: "Personel",     icon: "👷" },
+    { id: "egitimtakip",  label: "Eğitim Takip", icon: "🎓" },
+    { id: "dokumanlar",   label: "Dökümanlar",   icon: "📁" },
+    { id: "rapor",        label: "Raporlar",     icon: "📋" },
+    { id: "ayarlar",      label: "Ayarlar",      icon: "⚙️" },
   ];
 
   return (
@@ -1140,14 +1492,15 @@ export default function App() {
       </div>
       {/* ── İÇERİK ── */}
       <div style={{ flex: 1, padding: 28, overflowY: "auto" }}>
-        {sayfa === "dashboard"  && <Dashboard />}
-        {sayfa === "personel"   && <PersonelSayfa />}
-        {sayfa === "dokumanlar" && <DokumanlarSayfa />}
-        {sayfa === "rapor"      && <RaporSayfa />}
+        {sayfa === "dashboard"   && <Dashboard />}
+        {sayfa === "personel"    && <PersonelSayfa />}
+        {sayfa === "egitimtakip" && <EgitimTakipSayfa />}
+        {sayfa === "dokumanlar"  && <DokumanlarSayfa />}
+        {sayfa === "rapor"       && <RaporSayfa />}
+        {sayfa === "ayarlar"     && <AyarlarSayfa />}
       </div>
       {modal === "firma-ekle"        && <FirmaEkleModal />}
-      {modal === "personel-guncelle" && <PersonelGuncelleModal />}
-      {modal === "import"            && <ImportModal />}
+      {(modal === "personel-guncelle" || modal === "import") && <ImportModal />}
       {secPersonel && <PersonelDetay p={secPersonel} />}
       {secFirmaDetay && <FirmaGuncelleModal firma={secFirmaDetay} />}
     </div>
