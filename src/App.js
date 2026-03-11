@@ -171,6 +171,8 @@ export default function App() {
   const [egitimler, setEgitimler] = useState([]);
   const [muayeneler, setMuayeneler] = useState([]);
   const [sertifikalar, setSertifikalar] = useState([]);
+  const [dokumanlar, setDokumanlar] = useState([]);
+  const [secFirmaDetay, setSecFirmaDetay] = useState(null);
   const [yukleniyor, setYukleniyor] = useState(true);
   const [secFirma, setSecFirma] = useState(null);
   const [secPersonel, setSecPersonel] = useState(null);
@@ -208,18 +210,20 @@ export default function App() {
   // ─── VERİ YÜKLEME ──────────────────────────────────────────────────────────
   const veriYukle = async () => {
     setYukleniyor(true);
-    const [f, p, e, m, s] = await Promise.all([
+    const [f, p, e, m, s, d] = await Promise.all([
       supabase.from("firmalar").select("*").order("ad"),
       supabase.from("personel").select("*").order("ad_soyad"),
       supabase.from("egitimler").select("*"),
       supabase.from("muayeneler").select("*"),
       supabase.from("sertifikalar").select("*"),
+      supabase.from("dokumanlar").select("*"),
     ]);
     if (f.data) setFirmalar(f.data);
     if (p.data) setPersonel(p.data);
     if (e.data) setEgitimler(e.data);
     if (m.data) setMuayeneler(m.data);
     if (s.data) setSertifikalar(s.data);
+    if (d.data) setDokumanlar(d.data);
     setYukleniyor(false);
   };
 
@@ -278,6 +282,24 @@ export default function App() {
   const firmaSil = async (id) => {
     if (!window.confirm("Bu firmayı silmek istediğinize emin misiniz?")) return;
     await supabase.from("firmalar").delete().eq("id", id);
+    await veriYukle();
+  };
+  const firmaGuncelle = async (id, data) => {
+    await supabase.from("firmalar").update(data).eq("id", id);
+    await veriYukle();
+  };
+  const dokumanKaydet = async (firmaId, kategori, baslik, durum, tarih, notlar) => {
+    const { error } = await supabase.from("dokumanlar").insert({ firma_id: firmaId, kategori, baslik, durum, tarih: tarih || null, notlar });
+    if (error) alert("Hata: " + error.message);
+    else await veriYukle();
+  };
+  const dokumanGuncelle = async (id, data) => {
+    await supabase.from("dokumanlar").update(data).eq("id", id);
+    await veriYukle();
+  };
+  const dokumanSil = async (id) => {
+    if (!window.confirm("Bu kaydı silmek istediğinize emin misiniz?")) return;
+    await supabase.from("dokumanlar").delete().eq("id", id);
     await veriYukle();
   };
   const egitimKaydet = async (personelId, tur, tarih) => {
@@ -390,7 +412,34 @@ export default function App() {
     );
   };
 
-  const PersonelGuncelleModal = () => (
+  const FirmaGuncelleModal = ({ firma }) => {
+    const [form, setForm] = useState({
+      ad: firma.ad || "",
+      tehlike_sinifi: firma.tehlike_sinifi || "Tehlikeli",
+      sektor: firma.sektor || "",
+      calisansayisi: firma.calisansayisi || "",
+      sorumlu_kisi: firma.sorumlu_kisi || "",
+      iletisim: firma.iletisim || "",
+    });
+    return (
+      <Modal title={`✏️ ${firma.ad} — Firma Güncelle`} onClose={() => setSecFirmaDetay(null)}>
+        <Input label="Firma Adı" value={form.ad} onChange={e => setForm(f => ({ ...f, ad: e.target.value }))} />
+        <Input label="Sektör" value={form.sektor} onChange={e => setForm(f => ({ ...f, sektor: e.target.value }))} />
+        <Select label="Tehlike Sınıfı" value={form.tehlike_sinifi} onChange={e => setForm(f => ({ ...f, tehlike_sinifi: e.target.value }))}>
+          {Object.keys(TEHLIKE).map(k => <option key={k}>{k}</option>)}
+        </Select>
+        <Input label="Çalışan Sayısı" type="number" value={form.calisansayisi} onChange={e => setForm(f => ({ ...f, calisansayisi: e.target.value }))} />
+        <Input label="Sorumlu Kişi" value={form.sorumlu_kisi} onChange={e => setForm(f => ({ ...f, sorumlu_kisi: e.target.value }))} placeholder="İSG sorumlusu adı" />
+        <Input label="İletişim" value={form.iletisim} onChange={e => setForm(f => ({ ...f, iletisim: e.target.value }))} placeholder="Telefon veya e-posta" />
+        <div style={{ display: "flex", gap: 10 }}>
+          <Btn onClick={() => setSecFirmaDetay(null)} variant="secondary" style={{ flex: 1 }}>İptal</Btn>
+          <Btn onClick={async () => { await firmaGuncelle(firma.id, form); setSecFirmaDetay(null); }} style={{ flex: 1 }}>Kaydet</Btn>
+        </div>
+      </Modal>
+    );
+  };
+
+
     <Modal title="📥 Aylık Personel Listesi Güncelle" onClose={() => { setModal(null); setKarsilastirSonuc(null); setImportMetin(""); }} width={580}>
       <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 16 }}>Yeni listeyi yükleyin. Çıkanlar pasife alınır, yeniler eklenir.</div>
       <Select label="Firma" value={secFirma?.id || ""} onChange={e => setSecFirma(firmalar.find(f => f.id === Number(e.target.value)))}>
@@ -717,7 +766,158 @@ export default function App() {
     );
   };
 
-  const RaporSayfa = () => {
+  const DOKUMAN_KATEGORILER = [
+    { id: "risk", ad: "Risk Değerlendirmesi", icon: "⚠️" },
+    { id: "acil", ad: "Acil Durum", icon: "🚨" },
+    { id: "isgkurul", ad: "İSG Kurulu", icon: "👥" },
+    { id: "plan", ad: "Yıllık Plan & Rapor", icon: "📅" },
+    { id: "atama", ad: "Atama & Görevlendirme", icon: "📌" },
+    { id: "diger", ad: "Diğer", icon: "📄" },
+  ];
+  const DURUM_SECENEKLER = ["VAR", "YOK", "İMZADA", "PLANLANACAK", "DEĞİŞECEK"];
+  const DURUM_RENKLER = { "VAR": "#4ade80", "YOK": "#f87171", "İMZADA": "#fbbf24", "PLANLANACAK": "#60a5fa", "DEĞİŞECEK": "#fb923c" };
+
+  const DokumanlarSayfa = () => {
+    const [secFirmaId, setSecFirmaId] = useState(firmalar[0]?.id || null);
+    const [yeniForm, setYeniForm] = useState({ kategori: "risk", baslik: "", durum: "VAR", tarih: "", notlar: "" });
+    const [duzenleId, setDuzenleId] = useState(null);
+    const [duzenleForm, setDuzenleForm] = useState({});
+    const firma = firmalar.find(f => f.id === secFirmaId);
+    const firmaDokumanlari = dokumanlar.filter(d => d.firma_id === secFirmaId);
+
+    return (
+      <div>
+        {/* Firma seç + bilgi */}
+        <div style={{ display: "flex", gap: 12, marginBottom: 20, flexWrap: "wrap", alignItems: "center" }}>
+          <select value={secFirmaId || ""} onChange={e => setSecFirmaId(Number(e.target.value))}
+            style={{ padding: "10px 14px", background: "#111827", border: "1px solid #374151", borderRadius: 8, color: "#e5e7eb", fontSize: 14, minWidth: 240 }}>
+            {firmalar.map(f => <option key={f.id} value={f.id}>{f.ad}</option>)}
+          </select>
+          {firma && (
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <span style={{ background: "#1f2937", borderRadius: 8, padding: "6px 12px", fontSize: 13, color: "#9ca3af" }}>
+                {TEHLIKE[firma.tehlike_sinifi]?.icon} {firma.tehlike_sinifi}
+              </span>
+              {firma.calisansayisi > 0 && <span style={{ background: "#1f2937", borderRadius: 8, padding: "6px 12px", fontSize: 13, color: "#9ca3af" }}>👷 {firma.calisansayisi} çalışan</span>}
+              {firma.sorumlu_kisi && <span style={{ background: "#1f2937", borderRadius: 8, padding: "6px 12px", fontSize: 13, color: "#9ca3af" }}>👤 {firma.sorumlu_kisi}</span>}
+              {firma.iletisim && <span style={{ background: "#1f2937", borderRadius: 8, padding: "6px 12px", fontSize: 13, color: "#9ca3af" }}>📞 {firma.iletisim}</span>}
+            </div>
+          )}
+          {firma && <Btn onClick={() => setSecFirmaDetay(firma)} variant="secondary" style={{ fontSize: 12, padding: "7px 14px", marginLeft: "auto" }}>✏️ Firma Güncelle</Btn>}
+        </div>
+
+        {/* Yeni doküman ekle */}
+        <Card style={{ marginBottom: 20 }}>
+          <CardHeader title="➕ Yeni Doküman / Kayıt Ekle" />
+          <div style={{ padding: 16, display: "grid", gridTemplateColumns: "1fr 2fr 1fr 1fr", gap: 12 }}>
+            <div>
+              <label style={{ display: "block", fontSize: 12, color: "#6b7280", marginBottom: 5 }}>Kategori</label>
+              <select value={yeniForm.kategori} onChange={e => setYeniForm(f => ({ ...f, kategori: e.target.value }))}
+                style={{ width: "100%", padding: "8px 10px", background: "#0f172a", border: "1px solid #374151", borderRadius: 7, color: "#e5e7eb", fontSize: 13 }}>
+                {DOKUMAN_KATEGORILER.map(k => <option key={k.id} value={k.id}>{k.icon} {k.ad}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{ display: "block", fontSize: 12, color: "#6b7280", marginBottom: 5 }}>Başlık / Açıklama</label>
+              <input value={yeniForm.baslik} onChange={e => setYeniForm(f => ({ ...f, baslik: e.target.value }))} placeholder="Örn: Risk değerlendirmesi yapıldı"
+                style={{ width: "100%", padding: "8px 10px", background: "#0f172a", border: "1px solid #374151", borderRadius: 7, color: "#e5e7eb", fontSize: 13, boxSizing: "border-box" }} />
+            </div>
+            <div>
+              <label style={{ display: "block", fontSize: 12, color: "#6b7280", marginBottom: 5 }}>Durum</label>
+              <select value={yeniForm.durum} onChange={e => setYeniForm(f => ({ ...f, durum: e.target.value }))}
+                style={{ width: "100%", padding: "8px 10px", background: "#0f172a", border: "1px solid #374151", borderRadius: 7, color: DURUM_RENKLER[yeniForm.durum] || "#e5e7eb", fontSize: 13, fontWeight: 700 }}>
+                {DURUM_SECENEKLER.map(d => <option key={d} value={d}>{d}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{ display: "block", fontSize: 12, color: "#6b7280", marginBottom: 5 }}>Tarih</label>
+              <input type="date" value={yeniForm.tarih} onChange={e => setYeniForm(f => ({ ...f, tarih: e.target.value }))}
+                style={{ width: "100%", padding: "8px 10px", background: "#0f172a", border: "1px solid #374151", borderRadius: 7, color: "#e5e7eb", fontSize: 13, boxSizing: "border-box" }} />
+            </div>
+          </div>
+          <div style={{ padding: "0 16px 16px", display: "flex", gap: 12 }}>
+            <input value={yeniForm.notlar} onChange={e => setYeniForm(f => ({ ...f, notlar: e.target.value }))} placeholder="Notlar (isteğe bağlı)"
+              style={{ flex: 1, padding: "8px 10px", background: "#0f172a", border: "1px solid #374151", borderRadius: 7, color: "#e5e7eb", fontSize: 13 }} />
+            <Btn onClick={async () => {
+              if (!yeniForm.baslik || !secFirmaId) return;
+              await dokumanKaydet(secFirmaId, yeniForm.kategori, yeniForm.baslik, yeniForm.durum, yeniForm.tarih, yeniForm.notlar);
+              setYeniForm({ kategori: "risk", baslik: "", durum: "VAR", tarih: "", notlar: "" });
+            }} variant="success" disabled={!yeniForm.baslik}>Ekle</Btn>
+          </div>
+        </Card>
+
+        {/* Doküman listesi kategoriye göre */}
+        {DOKUMAN_KATEGORILER.map(kat => {
+          const kayitlar = firmaDokumanlari.filter(d => d.kategori === kat.id);
+          if (!kayitlar.length) return null;
+          return (
+            <Card key={kat.id} style={{ marginBottom: 14 }}>
+              <CardHeader title={`${kat.icon} ${kat.ad} (${kayitlar.length})`} />
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ background: "#0f172a" }}>
+                    {["Başlık", "Durum", "Tarih", "Notlar", ""].map(h => (
+                      <th key={h} style={{ padding: "9px 16px", textAlign: "left", fontSize: 11, color: "#6b7280", fontWeight: 700, textTransform: "uppercase" }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {kayitlar.sort((a,b) => new Date(b.created_at) - new Date(a.created_at)).map((k, i) => (
+                    <tr key={k.id} style={{ borderTop: "1px solid #1f2937", background: i % 2 === 0 ? "transparent" : "#0f172a22" }}>
+                      {duzenleId === k.id ? (
+                        <>
+                          <td style={{ padding: "8px 16px" }}>
+                            <input value={duzenleForm.baslik} onChange={e => setDuzenleForm(f => ({ ...f, baslik: e.target.value }))}
+                              style={{ width: "100%", padding: "6px 8px", background: "#0f172a", border: "1px solid #374151", borderRadius: 6, color: "#e5e7eb", fontSize: 13 }} />
+                          </td>
+                          <td style={{ padding: "8px 16px" }}>
+                            <select value={duzenleForm.durum} onChange={e => setDuzenleForm(f => ({ ...f, durum: e.target.value }))}
+                              style={{ padding: "6px 8px", background: "#0f172a", border: "1px solid #374151", borderRadius: 6, color: DURUM_RENKLER[duzenleForm.durum], fontSize: 13, fontWeight: 700 }}>
+                              {DURUM_SECENEKLER.map(d => <option key={d} value={d}>{d}</option>)}
+                            </select>
+                          </td>
+                          <td style={{ padding: "8px 16px" }}>
+                            <input type="date" value={duzenleForm.tarih || ""} onChange={e => setDuzenleForm(f => ({ ...f, tarih: e.target.value }))}
+                              style={{ padding: "6px 8px", background: "#0f172a", border: "1px solid #374151", borderRadius: 6, color: "#e5e7eb", fontSize: 13 }} />
+                          </td>
+                          <td style={{ padding: "8px 16px" }}>
+                            <input value={duzenleForm.notlar || ""} onChange={e => setDuzenleForm(f => ({ ...f, notlar: e.target.value }))}
+                              style={{ width: "100%", padding: "6px 8px", background: "#0f172a", border: "1px solid #374151", borderRadius: 6, color: "#e5e7eb", fontSize: 13 }} />
+                          </td>
+                          <td style={{ padding: "8px 16px", display: "flex", gap: 6 }}>
+                            <Btn variant="success" style={{ fontSize: 12, padding: "5px 10px" }} onClick={async () => { await dokumanGuncelle(k.id, duzenleForm); setDuzenleId(null); }}>✓</Btn>
+                            <Btn variant="secondary" style={{ fontSize: 12, padding: "5px 10px" }} onClick={() => setDuzenleId(null)}>✕</Btn>
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td style={{ padding: "11px 16px", color: "#f3f4f6", fontSize: 13, fontWeight: 500 }}>{k.baslik}</td>
+                          <td style={{ padding: "11px 16px" }}>
+                            <span style={{ color: DURUM_RENKLER[k.durum] || "#9ca3af", fontWeight: 700, fontSize: 13 }}>{k.durum}</span>
+                          </td>
+                          <td style={{ padding: "11px 16px", color: "#9ca3af", fontSize: 13 }}>{formatTarih(k.tarih)}</td>
+                          <td style={{ padding: "11px 16px", color: "#6b7280", fontSize: 12 }}>{k.notlar}</td>
+                          <td style={{ padding: "11px 16px", display: "flex", gap: 6 }}>
+                            <Btn variant="secondary" style={{ fontSize: 12, padding: "5px 10px" }} onClick={() => { setDuzenleId(k.id); setDuzenleForm({ baslik: k.baslik, durum: k.durum, tarih: k.tarih || "", notlar: k.notlar || "" }); }}>✏️</Btn>
+                            <Btn variant="danger" style={{ fontSize: 12, padding: "5px 10px" }} onClick={() => dokumanSil(k.id)}>Sil</Btn>
+                          </td>
+                        </>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Card>
+          );
+        })}
+        {firmaDokumanlari.length === 0 && (
+          <div style={{ textAlign: "center", padding: 60, color: "#6b7280" }}>Bu firma için henüz doküman kaydı yok. Yukarıdan ekleyin.</div>
+        )}
+      </div>
+    );
+  };
+
+
     const kritikler = aktifPersonel.flatMap(p => {
       const f = firmalar.find(x => x.id === p.firma_id);
       return EGITIM_TURLERI.flatMap(e => {
@@ -785,7 +985,7 @@ export default function App() {
             </div>
           </div>
           <div style={{ display: "flex", gap: 2 }}>
-            {[["dashboard","📊 Dashboard"],["personel","👷 Personel"],["rapor","📋 Raporlar"]].map(([id, label]) => (
+            {[["dashboard","📊 Dashboard"],["personel","👷 Personel"],["dokumanlar","📁 Dokümanlar"],["rapor","📋 Raporlar"]].map(([id, label]) => (
               <button key={id} onClick={() => setSayfa(id)} style={{ padding: "8px 16px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, background: sayfa === id ? "#1d4ed8" : "transparent", color: sayfa === id ? "#fff" : "#6b7280" }}>{label}</button>
             ))}
           </div>
@@ -798,11 +998,13 @@ export default function App() {
       <div style={{ maxWidth: 1400, margin: "0 auto", padding: 24 }}>
         {sayfa === "dashboard" && <Dashboard />}
         {sayfa === "personel"  && <PersonelSayfa />}
+        {sayfa === "dokumanlar" && <DokumanlarSayfa />}
         {sayfa === "rapor"     && <RaporSayfa />}
       </div>
       {modal === "firma-ekle"        && <FirmaEkleModal />}
       {modal === "personel-guncelle" && <PersonelGuncelleModal />}
       {secPersonel && <PersonelDetay p={secPersonel} />}
+      {secFirmaDetay && <FirmaGuncelleModal firma={secFirmaDetay} />}
     </div>
   );
 }
