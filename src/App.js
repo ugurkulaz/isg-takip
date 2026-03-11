@@ -919,6 +919,7 @@ export default function App() {
   };
 
 
+  const RaporSayfa = () => {
     const kritikler = aktifPersonel.flatMap(p => {
       const f = firmalar.find(x => x.id === p.firma_id);
       return EGITIM_TURLERI.flatMap(e => {
