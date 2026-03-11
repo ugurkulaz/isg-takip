@@ -440,6 +440,7 @@ export default function App() {
   };
 
 
+  const ImportModal = () => (
     <Modal title="📥 Aylık Personel Listesi Güncelle" onClose={() => { setModal(null); setKarsilastirSonuc(null); setImportMetin(""); }} width={580}>
       <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 16 }}>Yeni listeyi yükleyin. Çıkanlar pasife alınır, yeniler eklenir.</div>
       <Select label="Firma" value={secFirma?.id || ""} onChange={e => setSecFirma(firmalar.find(f => f.id === Number(e.target.value)))}>
@@ -1003,6 +1004,7 @@ export default function App() {
       </div>
       {modal === "firma-ekle"        && <FirmaEkleModal />}
       {modal === "personel-guncelle" && <PersonelGuncelleModal />}
+      {modal === "import"            && <ImportModal />}
       {secPersonel && <PersonelDetay p={secPersonel} />}
       {secFirmaDetay && <FirmaGuncelleModal firma={secFirmaDetay} />}
     </div>
