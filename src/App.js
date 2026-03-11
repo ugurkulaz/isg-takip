@@ -531,6 +531,10 @@ export default function App() {
           const tumKayitlar = egitimler.filter(x => x.personel_id === p.id && x.egitim_turu === e.id).sort((a,b) => new Date(b.egitim_tarihi) - new Date(a.egitim_tarihi));
           const son = tumKayitlar[0]?.egitim_tarihi || null;
           const d = durumHesapla(son, periyot, "Eğitim Eksik");
+          return (
+            <div key={e.id} style={{ background: "#111827", borderRadius: 10, padding: 14, marginBottom: 10, border: "1px solid #1f2937" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                <span style={{ fontSize: 18 }}>{e.icon}</span>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 600, color: "#f3f4f6" }}>{e.ad}</div>
                   <div style={{ fontSize: 12, color: "#6b7280" }}>Sonraki: {formatTarih(sonrakiTarih(son, periyot))}</div>
@@ -607,6 +611,10 @@ export default function App() {
           const tumKayitlar = sertifikalar.filter(x => x.personel_id === p.id && x.sertifika_turu === s.id).sort((a,b) => new Date(b.verilis_tarihi) - new Date(a.verilis_tarihi));
           const son = tumKayitlar[0]?.verilis_tarihi || null;
           const d = durumHesapla(son, s.periyot, "Sertifika Eksik");
+          return (
+            <div key={s.id} style={{ background: "#111827", borderRadius: 10, padding: 14, marginBottom: 10, border: "1px solid #1f2937" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                <span style={{ fontSize: 18 }}>{s.icon}</span>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 600, color: "#f3f4f6" }}>{s.ad}</div>
                   <div style={{ fontSize: 12, color: "#6b7280" }}>Periyot: {s.periyot} ay{son ? ` · Sonraki: ${formatTarih(sonrakiTarih(son, s.periyot))}` : ""}</div>
