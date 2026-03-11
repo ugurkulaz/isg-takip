@@ -7,12 +7,7 @@ const TEHLIKE = {
   "Tehlikeli":     { renk: "#fbbf24", bg: "#1c1403", sure: 24, icon: "🟡" },
   "Çok Tehlikeli": { renk: "#f87171", bg: "#1f0707", sure: 12, icon: "🔴" },
 };
-const EGITIM_TURLERI = [
-  { id: "isg",     ad: "İSG Temel Eğitimi",  icon: "🛡️", periyotFn: (t) => TEHLIKE[t]?.sure || 24 },
-  { id: "yangin",  ad: "Yangın Güvenliği",   icon: "🔥", periyotFn: () => 12 },
-  { id: "ilkyard", ad: "İlk Yardım",         icon: "🏥", periyotFn: () => 36 },
-  { id: "kkd",     ad: "KKD Kullanımı",      icon: "⛑", periyotFn: () => 24 },
-];
+// EGITIM_TURLERI artık Supabase'den yükleniyor (aşağıda state olarak)
 const MUAYENE_TURLERI = [
   { id: "periyodik", ad: "Periyodik Sağlık Muayenesi", icon: "🩺", periyotFn: (t) => TEHLIKE[t]?.sure || 24 },
   { id: "ise_giris", ad: "İşe Giriş Muayenesi",        icon: "📋", periyotFn: () => null },
@@ -172,6 +167,7 @@ export default function App() {
   const [muayeneler, setMuayeneler] = useState([]);
   const [sertifikalar, setSertifikalar] = useState([]);
   const [dokumanlar, setDokumanlar] = useState([]);
+  const [egitimTurleri, setEgitimTurleri] = useState([]);
   const [secFirmaDetay, setSecFirmaDetay] = useState(null);
   const [yukleniyor, setYukleniyor] = useState(true);
   const [secFirma, setSecFirma] = useState(null);
@@ -210,13 +206,14 @@ export default function App() {
   // ─── VERİ YÜKLEME ──────────────────────────────────────────────────────────
   const veriYukle = async () => {
     setYukleniyor(true);
-    const [f, p, e, m, s, d] = await Promise.all([
+    const [f, p, e, m, s, d, et] = await Promise.all([
       supabase.from("firmalar").select("*").order("ad"),
       supabase.from("personel").select("*").order("ad_soyad"),
       supabase.from("egitimler").select("*"),
       supabase.from("muayeneler").select("*"),
       supabase.from("sertifikalar").select("*"),
       supabase.from("dokumanlar").select("*"),
+      supabase.from("egitim_turleri").select("*").eq("aktif", true).order("id"),
     ]);
     if (f.data) setFirmalar(f.data);
     if (p.data) setPersonel(p.data);
@@ -224,6 +221,10 @@ export default function App() {
     if (m.data) setMuayeneler(m.data);
     if (s.data) setSertifikalar(s.data);
     if (d.data) setDokumanlar(d.data);
+    if (et.data) setEgitimTurleri(et.data.map(t => ({
+      ...t,
+      periyotFn: () => t.periyot,
+    })));
     setYukleniyor(false);
   };
 
@@ -250,7 +251,7 @@ export default function App() {
     const fps = aktifPersonel.filter(p => p.firma_id === f.id);
     let egitimKritik = 0, muayeneKritik = 0;
     fps.forEach(p => {
-      EGITIM_TURLERI.forEach(e => {
+      egitimTurleri.forEach(e => {
         const d = durumHesapla(sonEgitimBul(p.id, e.id), e.periyotFn(f.tehlike_sinifi));
         if (d.onc >= 3) egitimKritik++;
       });
@@ -264,14 +265,14 @@ export default function App() {
     const evrakEksik = dokumanlar.filter(d => d.firma_id === f.id && (d.durum === "YOK" || d.durum === "PLANLANACAK")).length;
     const kritikSay = egitimKritik + muayeneKritik;
     return { ...f, t: TEHLIKE[f.tehlike_sinifi] || TEHLIKE["Tehlikeli"], personelSay: fps.length, kritikSay, egitimKritik, muayeneKritik, evrakEksik };
-  }), [firmalar, aktifPersonel, egitimler, muayeneler, dokumanlar]);
+  }), [firmalar, aktifPersonel, egitimler, muayeneler, dokumanlar, egitimTurleri]);
 
   const genelIstat = useMemo(() => {
     let kritik = 0, yaklasan = 0, guncel = 0;
     aktifPersonel.forEach(p => {
       const f = firmalar.find(x => x.id === p.firma_id);
       if (!f) return;
-      EGITIM_TURLERI.forEach(e => {
+      egitimTurleri.forEach(e => {
         const d = durumHesapla(sonEgitimBul(p.id, e.id), e.periyotFn(f.tehlike_sinifi));
         if (d.onc >= 3) kritik++;
         else if (d.onc === 2) yaklasan++;
@@ -279,7 +280,7 @@ export default function App() {
       });
     });
     return { toplam: aktifPersonel.length, firmaSay: firmalar.length, kritik, yaklasan, guncel };
-  }, [aktifPersonel, firmalar, egitimler]);
+  }, [aktifPersonel, firmalar, egitimler, egitimTurleri]);
 
   // ─── CRUD ──────────────────────────────────────────────────────────────────
   const firmaEkle = async (data) => {
@@ -1151,7 +1152,125 @@ export default function App() {
   };
 
 
-  const RaporSayfa = () => {
+  const AyarlarSayfa = () => {
+    const [form, setForm] = useState({ ad: "", icon: "📚", periyot: 24 });
+    const [duzenleId, setDuzenleId] = useState(null);
+    const [duzenleForm, setDuzenleForm] = useState({});
+    const [kayit, setKayit] = useState(false);
+
+    const ekle = async () => {
+      if (!form.ad) return;
+      setKayit(true);
+      await supabase.from("egitim_turleri").insert({ ad: form.ad, icon: form.icon, periyot: Number(form.periyot) });
+      await veriYukle();
+      setForm({ ad: "", icon: "📚", periyot: 24 });
+      setKayit(false);
+    };
+
+    const guncelle = async (id) => {
+      await supabase.from("egitim_turleri").update({ ad: duzenleForm.ad, icon: duzenleForm.icon, periyot: Number(duzenleForm.periyot) }).eq("id", id);
+      await veriYukle();
+      setDuzenleId(null);
+    };
+
+    const sil = async (id) => {
+      if (!window.confirm("Bu eğitim türünü silmek istediğinize emin misiniz?")) return;
+      await supabase.from("egitim_turleri").update({ aktif: false }).eq("id", id);
+      await veriYukle();
+    };
+
+    const IKONLAR = ["📚","🛡️","🔥","🏥","⛑","⚡","🔧","🚜","🏗","🧯","🦺","📋","🎯","🔑","💊"];
+
+    return (
+      <div>
+        <Card style={{ marginBottom: 20 }}>
+          <CardHeader title="⚙️ Eğitim Türleri Yönetimi" />
+          <div style={{ padding: 20 }}>
+            <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 16 }}>Eğitim türlerini buradan ekleyebilir, düzenleyebilir veya pasife alabilirsiniz.</div>
+            {/* Yeni ekleme formu */}
+            <div style={{ background: "#0f172a", borderRadius: 10, padding: 16, marginBottom: 20, border: "1px solid #1e293b" }}>
+              <div style={{ fontWeight: 700, color: "#f3f4f6", marginBottom: 12, fontSize: 14 }}>➕ Yeni Eğitim Türü Ekle</div>
+              <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr auto", gap: 12, alignItems: "end" }}>
+                <div>
+                  <label style={{ display: "block", fontSize: 12, color: "#6b7280", marginBottom: 5 }}>Eğitim Adı</label>
+                  <input value={form.ad} onChange={e => setForm(f => ({ ...f, ad: e.target.value }))} placeholder="Örn: İş Güvenliği Uzmanlığı"
+                    style={{ width: "100%", padding: "9px 12px", background: "#111827", border: "1px solid #374151", borderRadius: 8, color: "#e5e7eb", fontSize: 13, boxSizing: "border-box" }} />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: 12, color: "#6b7280", marginBottom: 5 }}>İkon</label>
+                  <select value={form.icon} onChange={e => setForm(f => ({ ...f, icon: e.target.value }))}
+                    style={{ width: "100%", padding: "9px 12px", background: "#111827", border: "1px solid #374151", borderRadius: 8, color: "#e5e7eb", fontSize: 18 }}>
+                    {IKONLAR.map(ik => <option key={ik} value={ik}>{ik}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: 12, color: "#6b7280", marginBottom: 5 }}>Periyot (ay)</label>
+                  <input type="number" min="1" max="120" value={form.periyot} onChange={e => setForm(f => ({ ...f, periyot: e.target.value }))}
+                    style={{ width: "100%", padding: "9px 12px", background: "#111827", border: "1px solid #374151", borderRadius: 8, color: "#e5e7eb", fontSize: 13, boxSizing: "border-box" }} />
+                </div>
+                <Btn onClick={ekle} disabled={!form.ad || kayit} variant="success" style={{ padding: "9px 20px" }}>
+                  {kayit ? "..." : "Ekle"}
+                </Btn>
+              </div>
+            </div>
+
+            {/* Mevcut liste */}
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ background: "#0f172a" }}>
+                  {["İkon", "Eğitim Adı", "Periyot", ""].map(h => (
+                    <th key={h} style={{ padding: "10px 16px", textAlign: "left", fontSize: 11, color: "#6b7280", fontWeight: 700, textTransform: "uppercase" }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {egitimTurleri.map((et, i) => (
+                  <tr key={et.id} style={{ borderTop: "1px solid #1f2937" }}>
+                    {duzenleId === et.id ? (
+                      <>
+                        <td style={{ padding: "10px 16px" }}>
+                          <select value={duzenleForm.icon} onChange={e => setDuzenleForm(f => ({ ...f, icon: e.target.value }))}
+                            style={{ padding: "6px 8px", background: "#0f172a", border: "1px solid #374151", borderRadius: 6, color: "#e5e7eb", fontSize: 18 }}>
+                            {IKONLAR.map(ik => <option key={ik} value={ik}>{ik}</option>)}
+                          </select>
+                        </td>
+                        <td style={{ padding: "10px 16px" }}>
+                          <input value={duzenleForm.ad} onChange={e => setDuzenleForm(f => ({ ...f, ad: e.target.value }))}
+                            style={{ width: "100%", padding: "7px 10px", background: "#0f172a", border: "1px solid #374151", borderRadius: 6, color: "#e5e7eb", fontSize: 13 }} />
+                        </td>
+                        <td style={{ padding: "10px 16px" }}>
+                          <input type="number" value={duzenleForm.periyot} onChange={e => setDuzenleForm(f => ({ ...f, periyot: e.target.value }))}
+                            style={{ width: 80, padding: "7px 10px", background: "#0f172a", border: "1px solid #374151", borderRadius: 6, color: "#e5e7eb", fontSize: 13 }} />
+                          <span style={{ color: "#6b7280", fontSize: 12, marginLeft: 6 }}>ay</span>
+                        </td>
+                        <td style={{ padding: "10px 16px", display: "flex", gap: 6 }}>
+                          <Btn variant="success" style={{ fontSize: 12, padding: "5px 12px" }} onClick={() => guncelle(et.id)}>✓ Kaydet</Btn>
+                          <Btn variant="secondary" style={{ fontSize: 12, padding: "5px 12px" }} onClick={() => setDuzenleId(null)}>İptal</Btn>
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td style={{ padding: "12px 16px", fontSize: 22 }}>{et.icon}</td>
+                        <td style={{ padding: "12px 16px", fontWeight: 600, color: "#f3f4f6" }}>{et.ad}</td>
+                        <td style={{ padding: "12px 16px", color: "#9ca3af", fontSize: 13 }}>Her <strong style={{ color: "#60a5fa" }}>{et.periyot}</strong> ayda bir</td>
+                        <td style={{ padding: "12px 16px", display: "flex", gap: 6 }}>
+                          <Btn variant="secondary" style={{ fontSize: 12, padding: "5px 12px" }} onClick={() => { setDuzenleId(et.id); setDuzenleForm({ ad: et.ad, icon: et.icon, periyot: et.periyot }); }}>✏️ Düzenle</Btn>
+                          <Btn variant="danger" style={{ fontSize: 12, padding: "5px 12px" }} onClick={() => sil(et.id)}>Pasife Al</Btn>
+                        </td>
+                      </>
+                    )}
+                  </tr>
+                ))}
+                {egitimTurleri.length === 0 && <tr><td colSpan={4} style={{ padding: 40, textAlign: "center", color: "#6b7280" }}>Henüz eğitim türü yok.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      </div>
+    );
+  };
+
+
     const [secFirmaId, setSecFirmaId] = useState(firmalar[0]?.id || null);
     const firma = firmalar.find(f => f.id === secFirmaId);
     const firmaPersonel = aktifPersonel.filter(p => p.firma_id === secFirmaId);
@@ -1332,6 +1451,7 @@ export default function App() {
     { id: "egitimtakip",  label: "Eğitim Takip", icon: "🎓" },
     { id: "dokumanlar",   label: "Dökümanlar",   icon: "📁" },
     { id: "rapor",        label: "Raporlar",     icon: "📋" },
+    { id: "ayarlar",      label: "Ayarlar",      icon: "⚙️" },
   ];
 
   return (
@@ -1377,6 +1497,7 @@ export default function App() {
         {sayfa === "egitimtakip" && <EgitimTakipSayfa />}
         {sayfa === "dokumanlar"  && <DokumanlarSayfa />}
         {sayfa === "rapor"       && <RaporSayfa />}
+        {sayfa === "ayarlar"     && <AyarlarSayfa />}
       </div>
       {modal === "firma-ekle"        && <FirmaEkleModal />}
       {(modal === "personel-guncelle" || modal === "import") && <ImportModal />}
