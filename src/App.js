@@ -250,11 +250,13 @@ export default function App() {
   const firmaIstatistik = useMemo(() => firmalar.map(f => {
     const fps = aktifPersonel.filter(p => p.firma_id === f.id);
     let egitimKritik = 0, muayeneKritik = 0;
+    // Ana sayfada sadece İSG eğitimi (ilk eğitim türü) gösterilir
+    const isgTur = egitimTurleri[0];
     fps.forEach(p => {
-      egitimTurleri.forEach(e => {
-        const d = durumHesapla(sonEgitimBul(p.id, e.id), e.periyotFn(f.tehlike_sinifi), "Eğitim Eksik");
+      if (isgTur) {
+        const d = durumHesapla(sonEgitimBul(p.id, isgTur.id), isgTur.periyotFn(f.tehlike_sinifi), "Eğitim Eksik");
         if (d.onc >= 3) egitimKritik++;
-      });
+      }
       MUAYENE_TURLERI.forEach(m => {
         const periyot = m.periyotFn(f.tehlike_sinifi);
         if (!periyot) return;
