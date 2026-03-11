@@ -45,8 +45,11 @@ const durumHesapla = (sonTarih, periyot) => {
 };
 
 // ─── UI BİLEŞENLERİ ──────────────────────────────────────────────────────────
-const Badge = ({ d }) => (
-  <span style={{ background: d.bg, color: d.renk, borderRadius: 6, padding: "3px 10px", fontSize: 12, fontWeight: 700 }}>{d.label}</span>
+const Badge = ({ d, tarih }) => (
+  <div style={{ textAlign: "right", minWidth: 90 }}>
+    <span style={{ background: d.bg, color: d.renk, borderRadius: 6, padding: "3px 10px", fontSize: 12, fontWeight: 700, display: "inline-block" }}>{d.label}</span>
+    {tarih && <div style={{ fontSize: 11, color: "#6b7280", marginTop: 3 }}>{formatTarih(tarih)}</div>}
+  </div>
 );
 const Btn = ({ children, onClick, variant = "primary", style = {}, disabled = false, type = "button" }) => (
   <button type={type} onClick={onClick} disabled={disabled} style={{
@@ -411,15 +414,15 @@ export default function App() {
                 <span style={{ fontSize: 18 }}>{e.icon}</span>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 600, color: "#f3f4f6" }}>{e.ad}</div>
-                  <div style={{ fontSize: 12, color: "#6b7280" }}>Son: {formatTarih(son)} · Sonraki: {formatTarih(sonrakiTarih(son, periyot))}</div>
+                  <div style={{ fontSize: 12, color: "#6b7280" }}>Sonraki: {formatTarih(sonrakiTarih(son, periyot))}</div>
                 </div>
-                <Badge d={d} />
+                <Badge d={d} tarih={son} />
               </div>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 <input type="date" value={tarihler[e.id] || ""} onChange={ev => setTarihler(t => ({ ...t, [e.id]: ev.target.value }))}
                   placeholder="Tarih seçin"
                   style={{ flex: 1, padding: "7px 12px", background: "#0f172a", border: "1px solid #374151", borderRadius: 7, color: tarihler[e.id] ? "#e5e7eb" : "#6b7280", fontSize: 13 }} />
-                <Btn variant="success" style={{ padding: "7px 14px", opacity: tarihler[e.id] ? 1 : 0.4 }} disabled={!tarihler[e.id]} onClick={() => egitimKaydet(p.id, e.id, tarihler[e.id])}>Kaydet</Btn>
+                <Btn variant="success" style={{ padding: "7px 14px", opacity: tarihler[e.id] ? 1 : 0.4 }} disabled={!tarihler[e.id]} onClick={() => { egitimKaydet(p.id, e.id, tarihler[e.id]); setTarihler(t => ({ ...t, [e.id]: "" })); }}>Kaydet</Btn>
               </div>
             </div>
           );
@@ -434,14 +437,15 @@ export default function App() {
                 <span style={{ fontSize: 18 }}>{m.icon}</span>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 600, color: "#f3f4f6" }}>{m.ad}</div>
-                  <div style={{ fontSize: 12, color: "#6b7280" }}>Son: {formatTarih(son)}</div>
+                  <div style={{ fontSize: 12, color: "#6b7280" }}>{periyot ? `Sonraki: ${formatTarih(sonrakiTarih(son, periyot))}` : "Tek seferlik"}</div>
                 </div>
-                {periyot && <Badge d={d} />}
+                {periyot && <Badge d={d} tarih={son} />}
+                {!periyot && son && <span style={{ fontSize: 12, color: "#4ade80" }}>✅ {formatTarih(son)}</span>}
               </div>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 <input type="date" value={tarihler[`m_${m.id}`] || ""} onChange={ev => setTarihler(t => ({ ...t, [`m_${m.id}`]: ev.target.value }))}
                   style={{ flex: 1, padding: "7px 12px", background: "#0f172a", border: "1px solid #374151", borderRadius: 7, color: tarihler[`m_${m.id}`] ? "#e5e7eb" : "#6b7280", fontSize: 13 }} />
-                <Btn variant="success" style={{ padding: "7px 14px", opacity: tarihler[`m_${m.id}`] ? 1 : 0.4 }} disabled={!tarihler[`m_${m.id}`]} onClick={() => muayeneKaydet(p.id, m.id, tarihler[`m_${m.id}`])}>Kaydet</Btn>
+                <Btn variant="success" style={{ padding: "7px 14px", opacity: tarihler[`m_${m.id}`] ? 1 : 0.4 }} disabled={!tarihler[`m_${m.id}`]} onClick={() => { muayeneKaydet(p.id, m.id, tarihler[`m_${m.id}`]); setTarihler(t => ({ ...t, [`m_${m.id}`]: "" })); }}>Kaydet</Btn>
               </div>
             </div>
           );
@@ -455,14 +459,14 @@ export default function App() {
                 <span style={{ fontSize: 18 }}>{s.icon}</span>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 600, color: "#f3f4f6" }}>{s.ad}</div>
-                  <div style={{ fontSize: 12, color: "#6b7280" }}>Son: {formatTarih(son)} · Periyot: {s.periyot} ay</div>
+                  <div style={{ fontSize: 12, color: "#6b7280" }}>Periyot: {s.periyot} ay{son ? ` · Sonraki: ${formatTarih(sonrakiTarih(son, s.periyot))}` : ""}</div>
                 </div>
-                {son && <Badge d={d} />}
+                {son && <Badge d={d} tarih={son} />}
               </div>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 <input type="date" value={tarihler[`s_${s.id}`] || ""} onChange={ev => setTarihler(t => ({ ...t, [`s_${s.id}`]: ev.target.value }))}
                   style={{ flex: 1, padding: "7px 12px", background: "#0f172a", border: "1px solid #374151", borderRadius: 7, color: tarihler[`s_${s.id}`] ? "#e5e7eb" : "#6b7280", fontSize: 13 }} />
-                <Btn variant="success" style={{ padding: "7px 14px", opacity: tarihler[`s_${s.id}`] ? 1 : 0.4 }} disabled={!tarihler[`s_${s.id}`]} onClick={() => sertifikaKaydet(p.id, s.id, tarihler[`s_${s.id}`])}>Kaydet</Btn>
+                <Btn variant="success" style={{ padding: "7px 14px", opacity: tarihler[`s_${s.id}`] ? 1 : 0.4 }} disabled={!tarihler[`s_${s.id}`]} onClick={() => { sertifikaKaydet(p.id, s.id, tarihler[`s_${s.id}`]); setTarihler(t => ({ ...t, [`s_${s.id}`]: "" })); }}>Kaydet</Btn>
               </div>
             </div>
           );
@@ -569,16 +573,18 @@ export default function App() {
             <tbody>
               {fps.map((p, i) => {
                 const f = firmalar.find(x => x.id === p.firma_id);
-                const isgD = durumHesapla(sonEgitimBul(p.id, "isg"), EGITIM_TURLERI[0].periyotFn(f?.tehlike_sinifi));
-                const perD = durumHesapla(sonMuayeneBul(p.id, "periyodik"), MUAYENE_TURLERI[0].periyotFn(f?.tehlike_sinifi));
+                const isgTarih = sonEgitimBul(p.id, "isg");
+                const perTarih = sonMuayeneBul(p.id, "periyodik");
+                const isgD = durumHesapla(isgTarih, EGITIM_TURLERI[0].periyotFn(f?.tehlike_sinifi));
+                const perD = durumHesapla(perTarih, MUAYENE_TURLERI[0].periyotFn(f?.tehlike_sinifi));
                 return (
                   <tr key={p.id} style={{ borderTop: "1px solid #1f2937", background: i % 2 === 0 ? "transparent" : "#0f172a22" }}>
                     <td style={{ padding: "12px 16px", fontWeight: 600, color: "#f3f4f6" }}>{p.ad_soyad}</td>
                     <td style={{ padding: "12px 16px", color: "#9ca3af", fontSize: 12, fontFamily: "monospace" }}>{p.tc_no}</td>
                     <td style={{ padding: "12px 16px", color: "#d1d5db", fontSize: 13 }}>{p.gorev}</td>
                     <td style={{ padding: "12px 16px", color: "#9ca3af", fontSize: 13 }}>{formatTarih(p.ise_giris)}</td>
-                    <td style={{ padding: "12px 16px" }}><Badge d={isgD} /></td>
-                    <td style={{ padding: "12px 16px" }}><Badge d={perD} /></td>
+                    <td style={{ padding: "12px 16px" }}><Badge d={isgD} tarih={isgTarih} /></td>
+                    <td style={{ padding: "12px 16px" }}><Badge d={perD} tarih={perTarih} /></td>
                     <td style={{ padding: "12px 16px" }}>
                       <Btn onClick={() => { setSecPersonel(p); setAktifTab("egitim"); }} variant="secondary" style={{ fontSize: 12, padding: "6px 12px" }}>Detay</Btn>
                     </td>
