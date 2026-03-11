@@ -953,12 +953,17 @@ export default function App() {
 
     // Kişinin bu eğitim türündeki tüm kayıtları - egitim_no'ya göre
     const kisiEgitimler = (personelId) => {
-      const kayitlar = egitimler.filter(e => e.personel_id === personelId && e.egitim_turu === egitimTuru)
-        .sort((a, b) => new Date(a.egitim_tarihi) - new Date(b.egitim_tarihi));
-      return {
-        egitim1: kayitlar.find(k => k.egitim_no === 1) || kayitlar[0] || null,
-        egitim2: kayitlar.find(k => k.egitim_no === 2) || (kayitlar.length > 1 ? kayitlar[1] : null),
-      };
+      // egitim_turu hem string "isg" hem de numeric id olabilir - ikisini de kontrol et
+      const kayitlar = egitimler.filter(e => {
+        if (e.personel_id !== personelId) return false;
+        // String eşleşmesi (eski format) veya ID eşleşmesi (yeni format)
+        return String(e.egitim_turu) === String(egitimTuru);
+      }).sort((a, b) => new Date(a.egitim_tarihi) - new Date(b.egitim_tarihi));
+
+      // egitim_no alanı varsa ona bak, yoksa sıraya göre ata
+      const e1 = kayitlar.find(k => k.egitim_no === 1) || kayitlar.find(k => !k.egitim_no) || kayitlar[0] || null;
+      const e2 = kayitlar.find(k => k.egitim_no === 2) || (kayitlar.length > 1 ? kayitlar.find(k => k !== e1) : null);
+      return { egitim1: e1, egitim2: e2 };
     };
 
     // Toplam saat hesapla - tehlike sınıfına göre
@@ -980,7 +985,7 @@ export default function App() {
     const egitimListesi = firmaPersonel.map(p => {
       const { egitim1, egitim2 } = kisiEgitimler(p.id);
       const saatler = toplamSaatHesapla(egitim1, egitim2);
-      const periyot = egitimTurleri.find(e => e.id === egitimTuru)?.periyotFn(firma?.tehlike_sinifi);
+      const periyot = egitimTurleri.find(e => String(e.id) === String(egitimTuru))?.periyotFn(firma?.tehlike_sinifi);
       const d = durumHesapla(sonTarih(egitim1, egitim2), periyot);
       return { ...p, egitim1, egitim2, saatler, d };
     }).sort((a, b) => b.d.onc - a.d.onc);
@@ -991,16 +996,16 @@ export default function App() {
       const p = firmaPersonel.find(x => x.tc_no === tekForm.tc);
       if (!p) { alert("Bu TC No firmada bulunamadı!"); return; }
       setYukleniyor2(true);
-      // Önce mevcut kayıtları sil (aynı egitim_no varsa güncelle mantığı)
+      const turStr = String(egitimTuru);
       if (tekForm.tarih1) {
-        const mevcut1 = egitimler.find(e => e.personel_id === p.id && e.egitim_turu === egitimTuru && e.egitim_no === 1);
+        const mevcut1 = egitimler.find(e => e.personel_id === p.id && String(e.egitim_turu) === turStr && e.egitim_no === 1);
         if (mevcut1) await supabase.from("egitimler").update({ egitim_tarihi: tekForm.tarih1 }).eq("id", mevcut1.id);
-        else await supabase.from("egitimler").insert({ personel_id: p.id, egitim_turu: egitimTuru, egitim_tarihi: tekForm.tarih1, egitim_no: 1 });
+        else await supabase.from("egitimler").insert({ personel_id: p.id, egitim_turu: turStr, egitim_tarihi: tekForm.tarih1, egitim_no: 1 });
       }
       if (tekForm.tarih2 && tehlike?.egitim2Saat > 0) {
-        const mevcut2 = egitimler.find(e => e.personel_id === p.id && e.egitim_turu === egitimTuru && e.egitim_no === 2);
+        const mevcut2 = egitimler.find(e => e.personel_id === p.id && String(e.egitim_turu) === turStr && e.egitim_no === 2);
         if (mevcut2) await supabase.from("egitimler").update({ egitim_tarihi: tekForm.tarih2 }).eq("id", mevcut2.id);
-        else await supabase.from("egitimler").insert({ personel_id: p.id, egitim_turu: egitimTuru, egitim_tarihi: tekForm.tarih2, egitim_no: 2 });
+        else await supabase.from("egitimler").insert({ personel_id: p.id, egitim_turu: turStr, egitim_tarihi: tekForm.tarih2, egitim_no: 2 });
       }
       await veriYukle();
       setTekForm({ tc: "", tarih1: "", tarih2: "" });
@@ -1069,16 +1074,17 @@ export default function App() {
     const topluOnayla = async () => {
       if (!topluSonuc) return;
       setYukleniyor2(true);
+      const turStr = String(egitimTuru);
       for (const kayit of topluSonuc.basarili) {
         if (kayit.tarih1) {
-          const mevcut1 = egitimler.find(e => e.personel_id === kayit.p.id && e.egitim_turu === egitimTuru && e.egitim_no === 1);
+          const mevcut1 = egitimler.find(e => e.personel_id === kayit.p.id && String(e.egitim_turu) === turStr && e.egitim_no === 1);
           if (mevcut1) await supabase.from("egitimler").update({ egitim_tarihi: kayit.tarih1 }).eq("id", mevcut1.id);
-          else await supabase.from("egitimler").insert({ personel_id: kayit.p.id, egitim_turu: egitimTuru, egitim_tarihi: kayit.tarih1, egitim_no: 1 });
+          else await supabase.from("egitimler").insert({ personel_id: kayit.p.id, egitim_turu: turStr, egitim_tarihi: kayit.tarih1, egitim_no: 1 });
         }
         if (kayit.tarih2 && tehlike?.egitim2Saat > 0) {
-          const mevcut2 = egitimler.find(e => e.personel_id === kayit.p.id && e.egitim_turu === egitimTuru && e.egitim_no === 2);
+          const mevcut2 = egitimler.find(e => e.personel_id === kayit.p.id && String(e.egitim_turu) === turStr && e.egitim_no === 2);
           if (mevcut2) await supabase.from("egitimler").update({ egitim_tarihi: kayit.tarih2 }).eq("id", mevcut2.id);
-          else await supabase.from("egitimler").insert({ personel_id: kayit.p.id, egitim_turu: egitimTuru, egitim_tarihi: kayit.tarih2, egitim_no: 2 });
+          else await supabase.from("egitimler").insert({ personel_id: kayit.p.id, egitim_turu: turStr, egitim_tarihi: kayit.tarih2, egitim_no: 2 });
         }
       }
       await veriYukle();
@@ -1099,9 +1105,9 @@ export default function App() {
             style={{ padding: "10px 14px", background: "#111827", border: "1px solid #374151", borderRadius: 8, color: "#e5e7eb", fontSize: 14, minWidth: 220 }}>
             {firmalar.map(f => <option key={f.id} value={f.id}>{f.ad}</option>)}
           </select>
-          <select value={egitimTuru} onChange={e => setEgitimTuru(e.target.value)}
+          <select value={String(egitimTuru)} onChange={e => setEgitimTuru(e.target.value)}
             style={{ padding: "10px 14px", background: "#111827", border: "1px solid #374151", borderRadius: 8, color: "#e5e7eb", fontSize: 14 }}>
-            {egitimTurleri.map(e => <option key={e.id} value={e.id}>{e.icon} {e.ad}</option>)}
+            {egitimTurleri.map(e => <option key={e.id} value={String(e.id)}>{e.icon} {e.ad}</option>)}
           </select>
           {/* Saat bilgi kartı */}
           {tehlike && (
