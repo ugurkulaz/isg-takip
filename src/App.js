@@ -248,15 +248,23 @@ export default function App() {
 
   const firmaIstatistik = useMemo(() => firmalar.map(f => {
     const fps = aktifPersonel.filter(p => p.firma_id === f.id);
-    let kritikSay = 0;
+    let egitimKritik = 0, muayeneKritik = 0;
     fps.forEach(p => {
       EGITIM_TURLERI.forEach(e => {
         const d = durumHesapla(sonEgitimBul(p.id, e.id), e.periyotFn(f.tehlike_sinifi));
-        if (d.onc >= 3) kritikSay++;
+        if (d.onc >= 3) egitimKritik++;
+      });
+      MUAYENE_TURLERI.forEach(m => {
+        const periyot = m.periyotFn(f.tehlike_sinifi);
+        if (!periyot) return;
+        const d = durumHesapla(sonMuayeneBul(p.id, m.id), periyot);
+        if (d.onc >= 3) muayeneKritik++;
       });
     });
-    return { ...f, t: TEHLIKE[f.tehlike_sinifi] || TEHLIKE["Tehlikeli"], personelSay: fps.length, kritikSay };
-  }), [firmalar, aktifPersonel, egitimler]);
+    const evrakEksik = dokumanlar.filter(d => d.firma_id === f.id && (d.durum === "YOK" || d.durum === "PLANLANACAK")).length;
+    const kritikSay = egitimKritik + muayeneKritik;
+    return { ...f, t: TEHLIKE[f.tehlike_sinifi] || TEHLIKE["Tehlikeli"], personelSay: fps.length, kritikSay, egitimKritik, muayeneKritik, evrakEksik };
+  }), [firmalar, aktifPersonel, egitimler, muayeneler, dokumanlar]);
 
   const genelIstat = useMemo(() => {
     let kritik = 0, yaklasan = 0, guncel = 0;
@@ -676,7 +684,7 @@ export default function App() {
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr style={{ background: "#0f172a" }}>
-              {["Firma", "Sektör", "Tehlike", "Personel", "Kritik Kayıt", ""].map(h => (
+              {["Firma", "Sektör", "Tehlike", "Personel", "Eğitim", "Sağlık", "Evrak", ""].map(h => (
                 <th key={h} style={{ padding: "11px 16px", textAlign: "left", fontSize: 11, color: "#6b7280", fontWeight: 700, textTransform: "uppercase" }}>{h}</th>
               ))}
             </tr>
@@ -691,9 +699,19 @@ export default function App() {
                 </td>
                 <td style={{ padding: "13px 16px", color: "#d1d5db" }}>👷 {f.personelSay}</td>
                 <td style={{ padding: "13px 16px" }}>
-                  {f.kritikSay > 0
-                    ? <span style={{ background: "#1f0707", color: "#f87171", borderRadius: 6, padding: "3px 10px", fontSize: 13, fontWeight: 700 }}>🚨 {f.kritikSay}</span>
-                    : <span style={{ color: "#4ade80", fontSize: 13 }}>✅ Temiz</span>}
+                  {f.egitimKritik > 0
+                    ? <span style={{ background: "#1f0707", color: "#f87171", borderRadius: 6, padding: "3px 10px", fontSize: 13, fontWeight: 700 }}>🚨 {f.egitimKritik}</span>
+                    : <span style={{ color: "#4ade80", fontSize: 13 }}>✅ Uygun</span>}
+                </td>
+                <td style={{ padding: "13px 16px" }}>
+                  {f.muayeneKritik > 0
+                    ? <span style={{ background: "#1f0707", color: "#f87171", borderRadius: 6, padding: "3px 10px", fontSize: 13, fontWeight: 700 }}>🚨 {f.muayeneKritik}</span>
+                    : <span style={{ color: "#4ade80", fontSize: 13 }}>✅ Uygun</span>}
+                </td>
+                <td style={{ padding: "13px 16px" }}>
+                  {f.evrakEksik > 0
+                    ? <span style={{ background: "#1c1403", color: "#fbbf24", borderRadius: 6, padding: "3px 10px", fontSize: 13, fontWeight: 700 }}>⚠️ {f.evrakEksik}</span>
+                    : <span style={{ color: "#4ade80", fontSize: 13 }}>✅ Uygun</span>}
                 </td>
                 <td style={{ padding: "13px 16px", display: "flex", gap: 8 }}>
                   <Btn onClick={() => { setSecFirma(f); setSayfa("personel"); }} variant="secondary" style={{ fontSize: 12, padding: "6px 12px" }}>Personel →</Btn>
@@ -1146,8 +1164,7 @@ export default function App() {
         {sayfa === "rapor"      && <RaporSayfa />}
       </div>
       {modal === "firma-ekle"        && <FirmaEkleModal />}
-      {modal === "personel-guncelle" && <PersonelGuncelleModal />}
-      {modal === "import"            && <ImportModal />}
+      {(modal === "personel-guncelle" || modal === "import") && <ImportModal />}
       {secPersonel && <PersonelDetay p={secPersonel} />}
       {secFirmaDetay && <FirmaGuncelleModal firma={secFirmaDetay} />}
     </div>
