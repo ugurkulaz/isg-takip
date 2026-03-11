@@ -3,9 +3,9 @@ import { supabase } from "./supabase";
 
 // ─── SABITLER ────────────────────────────────────────────────────────────────
 const TEHLIKE = {
-  "Az Tehlikeli":  { renk: "#4ade80", bg: "#052e16", sure: 36, icon: "🟢" },
-  "Tehlikeli":     { renk: "#fbbf24", bg: "#1c1403", sure: 24, icon: "🟡" },
-  "Çok Tehlikeli": { renk: "#f87171", bg: "#1f0707", sure: 12, icon: "🔴" },
+  "Az Tehlikeli":  { renk: "#4ade80", bg: "#052e16", sure: 36, icon: "🟢", egitim1Saat: 8, egitim2Saat: 0,  toplamSaat: 8  },
+  "Tehlikeli":     { renk: "#fbbf24", bg: "#1c1403", sure: 24, icon: "🟡", egitim1Saat: 8, egitim2Saat: 4,  toplamSaat: 12 },
+  "Çok Tehlikeli": { renk: "#f87171", bg: "#1f0707", sure: 12, icon: "🔴", egitim1Saat: 8, egitim2Saat: 8,  toplamSaat: 16 },
 };
 // EGITIM_TURLERI artık Supabase'den yükleniyor (aşağıda state olarak)
 const MUAYENE_TURLERI = [
@@ -940,70 +940,117 @@ export default function App() {
 
   const EgitimTakipSayfa = () => {
     const [secFirmaId, setSecFirmaId] = useState(firmalar[0]?.id || null);
-    const [egitimTuru, setEgitimTuru] = useState("isg");
+    const [egitimTuru, setEgitimTuru] = useState(() => egitimTurleri[0]?.id || "");
     const [topluMetin, setTopluMetin] = useState("");
     const [topluSonuc, setTopluSonuc] = useState(null);
-    const [tekForm, setTekForm] = useState({ tc: "", tarih: "" });
-    const [mod, setMod] = useState("liste"); // "liste" | "tek" | "toplu"
+    const [tekForm, setTekForm] = useState({ tc: "", tarih1: "", tarih2: "" });
+    const [mod, setMod] = useState("liste");
     const [yukleniyor2, setYukleniyor2] = useState(false);
 
     const firma = firmalar.find(f => f.id === secFirmaId);
+    const tehlike = TEHLIKE[firma?.tehlike_sinifi];
     const firmaPersonel = aktifPersonel.filter(p => p.firma_id === secFirmaId);
 
-    // Firmadaki personelin son eğitim bilgileriyle liste
+    // Kişinin bu eğitim türündeki tüm kayıtları - egitim_no'ya göre
+    const kisiEgitimler = (personelId) => {
+      const kayitlar = egitimler.filter(e => e.personel_id === personelId && e.egitim_turu === egitimTuru)
+        .sort((a, b) => new Date(a.egitim_tarihi) - new Date(b.egitim_tarihi));
+      return {
+        egitim1: kayitlar.find(k => k.egitim_no === 1) || kayitlar[0] || null,
+        egitim2: kayitlar.find(k => k.egitim_no === 2) || (kayitlar.length > 1 ? kayitlar[1] : null),
+      };
+    };
+
+    // Toplam saat hesapla - tehlike sınıfına göre
+    const toplamSaatHesapla = (e1, e2) => {
+      const t = tehlike;
+      if (!t) return { toplam: 0, hedef: 0 };
+      const saat1 = e1 ? t.egitim1Saat : 0;
+      const saat2 = e2 ? t.egitim2Saat : 0;
+      return { toplam: saat1 + saat2, hedef: t.toplamSaat };
+    };
+
+    // Son eğitim tarihi (en yeni)
+    const sonTarih = (e1, e2) => {
+      const tarihler = [e1?.egitim_tarihi, e2?.egitim_tarihi].filter(Boolean);
+      if (!tarihler.length) return null;
+      return tarihler.sort((a, b) => new Date(b) - new Date(a))[0];
+    };
+
     const egitimListesi = firmaPersonel.map(p => {
-      const son = sonEgitimBul(p.id, egitimTuru);
+      const { egitim1, egitim2 } = kisiEgitimler(p.id);
+      const saatler = toplamSaatHesapla(egitim1, egitim2);
       const periyot = egitimTurleri.find(e => e.id === egitimTuru)?.periyotFn(firma?.tehlike_sinifi);
-      const d = durumHesapla(son, periyot);
-      return { ...p, son, d };
+      const d = durumHesapla(sonTarih(egitim1, egitim2), periyot);
+      return { ...p, egitim1, egitim2, saatler, d };
     }).sort((a, b) => b.d.onc - a.d.onc);
 
     // Tek kişi kaydet
     const tekKaydet = async () => {
-      if (!tekForm.tc || !tekForm.tarih) return;
+      if (!tekForm.tc || (!tekForm.tarih1 && !tekForm.tarih2)) return;
       const p = firmaPersonel.find(x => x.tc_no === tekForm.tc);
       if (!p) { alert("Bu TC No firmada bulunamadı!"); return; }
       setYukleniyor2(true);
-      await supabase.from("egitimler").insert({ personel_id: p.id, egitim_turu: egitimTuru, egitim_tarihi: tekForm.tarih });
+      // Önce mevcut kayıtları sil (aynı egitim_no varsa güncelle mantığı)
+      if (tekForm.tarih1) {
+        const mevcut1 = egitimler.find(e => e.personel_id === p.id && e.egitim_turu === egitimTuru && e.egitim_no === 1);
+        if (mevcut1) await supabase.from("egitimler").update({ egitim_tarihi: tekForm.tarih1 }).eq("id", mevcut1.id);
+        else await supabase.from("egitimler").insert({ personel_id: p.id, egitim_turu: egitimTuru, egitim_tarihi: tekForm.tarih1, egitim_no: 1 });
+      }
+      if (tekForm.tarih2 && tehlike?.egitim2Saat > 0) {
+        const mevcut2 = egitimler.find(e => e.personel_id === p.id && e.egitim_turu === egitimTuru && e.egitim_no === 2);
+        if (mevcut2) await supabase.from("egitimler").update({ egitim_tarihi: tekForm.tarih2 }).eq("id", mevcut2.id);
+        else await supabase.from("egitimler").insert({ personel_id: p.id, egitim_turu: egitimTuru, egitim_tarihi: tekForm.tarih2, egitim_no: 2 });
+      }
       await veriYukle();
-      setTekForm({ tc: "", tarih: "" });
+      setTekForm({ tc: "", tarih1: "", tarih2: "" });
       setYukleniyor2(false);
     };
 
-    // Toplu kaydet - TC No ve tarih listesi
+    // Toplu parse - format: TC [TAB] Tarih1 [TAB] Tarih2(opsiyonel)
+    const topluKarsilastir = () => {
+      const satirlar = topluMetin.trim().split("\n").map(s => s.trim()).filter(Boolean);
+      const basarili = [], hatali = [];
+      const parseTarih = (t) => {
+        if (!t) return null;
+        t = t.trim();
+        if (/^\d{2}\.\d{2}\.\d{4}$/.test(t)) { const [g,a,y] = t.split("."); return `${y}-${a}-${g}`; }
+        return t;
+      };
+      satirlar.forEach(satir => {
+        const parcalar = satir.split(/\t|;/);
+        const tc = parcalar[0]?.trim();
+        const tarih1 = parseTarih(parcalar[1]);
+        const tarih2 = parseTarih(parcalar[2]);
+        const p = firmaPersonel.find(x => x.tc_no === tc);
+        if (p && tarih1) basarili.push({ p, tarih1, tarih2 });
+        else hatali.push({ satir, sebep: !p ? "TC bulunamadı" : "Eğitim 1 tarihi eksik" });
+      });
+      setTopluSonuc({ basarili, hatali });
+    };
+
     const topluOnayla = async () => {
       if (!topluSonuc) return;
       setYukleniyor2(true);
       for (const kayit of topluSonuc.basarili) {
-        await supabase.from("egitimler").insert({ personel_id: kayit.p.id, egitim_turu: egitimTuru, egitim_tarihi: kayit.tarih });
+        const mevcut1 = egitimler.find(e => e.personel_id === kayit.p.id && e.egitim_turu === egitimTuru && e.egitim_no === 1);
+        if (mevcut1) await supabase.from("egitimler").update({ egitim_tarihi: kayit.tarih1 }).eq("id", mevcut1.id);
+        else await supabase.from("egitimler").insert({ personel_id: kayit.p.id, egitim_turu: egitimTuru, egitim_tarihi: kayit.tarih1, egitim_no: 1 });
+        if (kayit.tarih2 && tehlike?.egitim2Saat > 0) {
+          const mevcut2 = egitimler.find(e => e.personel_id === kayit.p.id && e.egitim_turu === egitimTuru && e.egitim_no === 2);
+          if (mevcut2) await supabase.from("egitimler").update({ egitim_tarihi: kayit.tarih2 }).eq("id", mevcut2.id);
+          else await supabase.from("egitimler").insert({ personel_id: kayit.p.id, egitim_turu: egitimTuru, egitim_tarihi: kayit.tarih2, egitim_no: 2 });
+        }
       }
       await veriYukle();
       setTopluSonuc(null);
       setTopluMetin("");
       setYukleniyor2(false);
-      alert(`✅ ${topluSonuc.basarili.length} kayıt eklendi!`);
-    };
-
-    // Toplu parse
-    const topluKarsilastir = () => {
-      const satirlar = topluMetin.trim().split("\n").map(s => s.trim()).filter(Boolean);
-      const basarili = [], hatali = [];
-      satirlar.forEach(satir => {
-        const parcalar = satir.split(/[\t,;]/);
-        const tc = parcalar[0]?.trim();
-        let tarih = parcalar[parcalar.length - 1]?.trim();
-        // DD.MM.YYYY → YYYY-MM-DD
-        if (tarih && /^\d{2}\.\d{2}\.\d{4}$/.test(tarih)) {
-          const [g, a, y] = tarih.split("."); tarih = `${y}-${a}-${g}`;
-        }
-        const p = firmaPersonel.find(x => x.tc_no === tc);
-        if (p && tarih) basarili.push({ p, tarih });
-        else hatali.push({ satir, sebep: !p ? "TC bulunamadı" : "Tarih eksik" });
-      });
-      setTopluSonuc({ basarili, hatali });
+      alert(`✅ ${topluSonuc.basarili.length} kayıt güncellendi!`);
     };
 
     const egitimAdi = egitimTurleri.find(e => e.id === egitimTuru)?.ad || "";
+    const egitimIcon = egitimTurleri.find(e => e.id === egitimTuru)?.icon || "";
 
     return (
       <div>
@@ -1017,6 +1064,15 @@ export default function App() {
             style={{ padding: "10px 14px", background: "#111827", border: "1px solid #374151", borderRadius: 8, color: "#e5e7eb", fontSize: 14 }}>
             {egitimTurleri.map(e => <option key={e.id} value={e.id}>{e.icon} {e.ad}</option>)}
           </select>
+          {/* Saat bilgi kartı */}
+          {tehlike && (
+            <div style={{ background: "#111827", border: `1px solid ${tehlike.renk}33`, borderRadius: 8, padding: "8px 14px", fontSize: 12, color: "#9ca3af", display: "flex", gap: 16 }}>
+              <span>{tehlike.icon} {firma?.tehlike_sinifi}</span>
+              <span>Eğitim 1: <strong style={{ color: "#60a5fa" }}>{tehlike.egitim1Saat} saat</strong></span>
+              {tehlike.egitim2Saat > 0 && <span>Eğitim 2: <strong style={{ color: "#60a5fa" }}>{tehlike.egitim2Saat} saat</strong></span>}
+              <span>Toplam hedef: <strong style={{ color: "#4ade80" }}>{tehlike.toplamSaat} saat</strong></span>
+            </div>
+          )}
           <div style={{ display: "flex", gap: 6, marginLeft: "auto" }}>
             {[["liste","📋 Liste"],["tek","➕ Tek Kayıt"],["toplu","📤 Toplu Yükle"]].map(([id, label]) => (
               <button key={id} onClick={() => setMod(id)} style={{
@@ -1030,29 +1086,52 @@ export default function App() {
         {/* LİSTE MODU */}
         {mod === "liste" && (
           <Card>
-            <CardHeader title={`📋 ${firma?.ad || ""} — ${egitimAdi} Listesi (${egitimListesi.length} personel)`} />
+            <CardHeader title={`${egitimIcon} ${firma?.ad || ""} — ${egitimAdi} (${egitimListesi.length} personel)`} />
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ background: "#0f172a" }}>
-                  {["Ad Soyad", "Görev", "TC No", "Son Eğitim", "Durum", ""].map(h => (
-                    <th key={h} style={{ padding: "11px 16px", textAlign: "left", fontSize: 11, color: "#6b7280", fontWeight: 700, textTransform: "uppercase" }}>{h}</th>
+                  {["Ad Soyad", "Görev", "TC No", "Eğitim 1", "Eğitim 2", "Toplam Saat", "Durum", ""].map(h => (
+                    <th key={h} style={{ padding: "11px 14px", textAlign: "left", fontSize: 11, color: "#6b7280", fontWeight: 700, textTransform: "uppercase" }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {egitimListesi.map((p, i) => (
-                  <tr key={p.id} style={{ borderTop: "1px solid #1f2937", background: i % 2 === 0 ? "transparent" : "#0f172a22" }}>
-                    <td style={{ padding: "12px 16px", fontWeight: 600, color: "#f3f4f6" }}>{p.ad_soyad}</td>
-                    <td style={{ padding: "12px 16px", color: "#9ca3af", fontSize: 13 }}>{p.gorev}</td>
-                    <td style={{ padding: "12px 16px", color: "#6b7280", fontSize: 12, fontFamily: "monospace" }}>{p.tc_no}</td>
-                    <td style={{ padding: "12px 16px", color: "#9ca3af", fontSize: 13 }}>{p.son ? formatTarih(p.son) : "—"}</td>
-                    <td style={{ padding: "12px 16px" }}><Badge d={p.d} /></td>
-                    <td style={{ padding: "12px 16px" }}>
-                      <Btn variant="secondary" style={{ fontSize: 12, padding: "5px 10px" }} onClick={() => { setTekForm({ tc: p.tc_no, tarih: "" }); setMod("tek"); }}>Güncelle</Btn>
-                    </td>
-                  </tr>
-                ))}
-                {egitimListesi.length === 0 && <tr><td colSpan={6} style={{ padding: 40, textAlign: "center", color: "#6b7280" }}>Bu firmada aktif personel yok.</td></tr>}
+                {egitimListesi.map((p, i) => {
+                  const { toplam, hedef } = p.saatler;
+                  const tamamlandi = toplam >= hedef;
+                  return (
+                    <tr key={p.id} style={{ borderTop: "1px solid #1f2937" }}>
+                      <td style={{ padding: "12px 14px", fontWeight: 600, color: "#f3f4f6" }}>{p.ad_soyad}</td>
+                      <td style={{ padding: "12px 14px", color: "#9ca3af", fontSize: 13 }}>{p.gorev}</td>
+                      <td style={{ padding: "12px 14px", color: "#6b7280", fontSize: 12, fontFamily: "monospace" }}>{p.tc_no}</td>
+                      <td style={{ padding: "12px 14px", fontSize: 13 }}>
+                        {p.egitim1 ? <span style={{ color: "#4ade80" }}>{formatTarih(p.egitim1.egitim_tarihi)}</span> : <span style={{ color: "#4b5563" }}>—</span>}
+                        {p.egitim1 && tehlike && <span style={{ color: "#6b7280", fontSize: 11, marginLeft: 4 }}>({tehlike.egitim1Saat}s)</span>}
+                      </td>
+                      <td style={{ padding: "12px 14px", fontSize: 13 }}>
+                        {tehlike?.egitim2Saat > 0
+                          ? p.egitim2
+                            ? <span style={{ color: "#4ade80" }}>{formatTarih(p.egitim2.egitim_tarihi)}<span style={{ color: "#6b7280", fontSize: 11, marginLeft: 4 }}>({tehlike.egitim2Saat}s)</span></span>
+                            : <span style={{ color: "#f87171" }}>Eksik</span>
+                          : <span style={{ color: "#4b5563", fontSize: 12 }}>Gerekmiyor</span>
+                        }
+                      </td>
+                      <td style={{ padding: "12px 14px" }}>
+                        <span style={{ fontWeight: 700, fontSize: 14, color: tamamlandi ? "#4ade80" : "#fbbf24" }}>
+                          {tamamlandi ? "✅" : "⚠️"} {toplam}/{hedef} saat
+                        </span>
+                      </td>
+                      <td style={{ padding: "12px 14px" }}><Badge d={p.d} /></td>
+                      <td style={{ padding: "12px 14px" }}>
+                        <Btn variant="secondary" style={{ fontSize: 12, padding: "5px 10px" }} onClick={() => {
+                          setTekForm({ tc: p.tc_no, tarih1: p.egitim1?.egitim_tarihi || "", tarih2: p.egitim2?.egitim_tarihi || "" });
+                          setMod("tek");
+                        }}>Güncelle</Btn>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {egitimListesi.length === 0 && <tr><td colSpan={8} style={{ padding: 40, textAlign: "center", color: "#6b7280" }}>Bu firmada aktif personel yok.</td></tr>}
               </tbody>
             </table>
           </Card>
@@ -1063,44 +1142,66 @@ export default function App() {
           <Card>
             <CardHeader title={`➕ Tek Kayıt — ${egitimAdi}`} />
             <div style={{ padding: 20 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
-                <div>
-                  <label style={{ display: "block", fontSize: 12, color: "#6b7280", marginBottom: 6 }}>TC No veya İsim Seç</label>
-                  <select value={tekForm.tc} onChange={e => setTekForm(f => ({ ...f, tc: e.target.value }))}
-                    style={{ width: "100%", padding: "9px 12px", background: "#0f172a", border: "1px solid #374151", borderRadius: 8, color: "#e5e7eb", fontSize: 13 }}>
-                    <option value="">-- Personel Seçin --</option>
-                    {firmaPersonel.map(p => <option key={p.id} value={p.tc_no}>{p.ad_soyad} — {p.tc_no}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label style={{ display: "block", fontSize: 12, color: "#6b7280", marginBottom: 6 }}>Eğitim Tarihi</label>
-                  <input type="date" value={tekForm.tarih} onChange={e => setTekForm(f => ({ ...f, tarih: e.target.value }))}
-                    style={{ width: "100%", padding: "9px 12px", background: "#0f172a", border: "1px solid #374151", borderRadius: 8, color: "#e5e7eb", fontSize: 13, boxSizing: "border-box" }} />
-                </div>
+              {/* Personel seç */}
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: "block", fontSize: 12, color: "#6b7280", marginBottom: 6 }}>Personel Seç</label>
+                <select value={tekForm.tc} onChange={e => {
+                  const p = firmaPersonel.find(x => x.tc_no === e.target.value);
+                  if (p) {
+                    const { egitim1, egitim2 } = kisiEgitimler(p.id);
+                    setTekForm({ tc: e.target.value, tarih1: egitim1?.egitim_tarihi || "", tarih2: egitim2?.egitim_tarihi || "" });
+                  } else setTekForm({ tc: e.target.value, tarih1: "", tarih2: "" });
+                }}
+                  style={{ width: "100%", padding: "9px 12px", background: "#0f172a", border: "1px solid #374151", borderRadius: 8, color: "#e5e7eb", fontSize: 13 }}>
+                  <option value="">-- Personel Seçin --</option>
+                  {firmaPersonel.map(p => <option key={p.id} value={p.tc_no}>{p.ad_soyad} — {p.tc_no}</option>)}
+                </select>
               </div>
-              {tekForm.tc && (
-                <div style={{ background: "#111827", borderRadius: 8, padding: 12, marginBottom: 16, fontSize: 13, color: "#9ca3af" }}>
-                  {(() => { const p = firmaPersonel.find(x => x.tc_no === tekForm.tc); return p ? `👤 ${p.ad_soyad} · ${p.gorev} · ${p.tc_no}` : ""; })()}
+              {/* Eğitim tarihleri */}
+              <div style={{ display: "grid", gridTemplateColumns: tehlike?.egitim2Saat > 0 ? "1fr 1fr" : "1fr", gap: 16, marginBottom: 16 }}>
+                <div style={{ background: "#0f172a", borderRadius: 8, padding: 14, border: "1px solid #1e293b" }}>
+                  <div style={{ fontWeight: 700, color: "#60a5fa", marginBottom: 10, fontSize: 13 }}>
+                    📅 Eğitim 1 — <span style={{ color: "#4ade80" }}>{tehlike?.egitim1Saat || 8} saat</span>
+                  </div>
+                  <input type="date" value={tekForm.tarih1} onChange={e => setTekForm(f => ({ ...f, tarih1: e.target.value }))}
+                    style={{ width: "100%", padding: "9px 12px", background: "#111827", border: "1px solid #374151", borderRadius: 8, color: "#e5e7eb", fontSize: 13, boxSizing: "border-box" }} />
+                </div>
+                {tehlike?.egitim2Saat > 0 && (
+                  <div style={{ background: "#0f172a", borderRadius: 8, padding: 14, border: "1px solid #1e293b" }}>
+                    <div style={{ fontWeight: 700, color: "#60a5fa", marginBottom: 10, fontSize: 13 }}>
+                      📅 Eğitim 2 — <span style={{ color: "#4ade80" }}>{tehlike.egitim2Saat} saat</span>
+                    </div>
+                    <input type="date" value={tekForm.tarih2} onChange={e => setTekForm(f => ({ ...f, tarih2: e.target.value }))}
+                      style={{ width: "100%", padding: "9px 12px", background: "#111827", border: "1px solid #374151", borderRadius: 8, color: "#e5e7eb", fontSize: 13, boxSizing: "border-box" }} />
+                  </div>
+                )}
+              </div>
+              {tehlike && (
+                <div style={{ background: "#111827", borderRadius: 8, padding: 10, marginBottom: 16, fontSize: 13, color: "#9ca3af" }}>
+                  {tehlike.icon} <strong style={{ color: "#f3f4f6" }}>{firma?.tehlike_sinifi}</strong> — Hedef toplam:
+                  <strong style={{ color: "#4ade80", marginLeft: 6 }}>{tehlike.toplamSaat} saat</strong>
+                  {" "}({tehlike.egitim1Saat}s + {tehlike.egitim2Saat}s)
                 </div>
               )}
-              <Btn onClick={tekKaydet} disabled={!tekForm.tc || !tekForm.tarih || yukleniyor2} variant="success" style={{ minWidth: 160 }}>
-                {yukleniyor2 ? "Kaydediliyor..." : "✅ Eğitim Kaydet"}
+              <Btn onClick={tekKaydet} disabled={!tekForm.tc || !tekForm.tarih1 || yukleniyor2} variant="success" style={{ minWidth: 160 }}>
+                {yukleniyor2 ? "Kaydediliyor..." : "✅ Kaydet"}
               </Btn>
             </div>
           </Card>
         )}
 
-        {/* TOPLU YÜKLEME MODU */}
+        {/* TOPLU YÜKLEME */}
         {mod === "toplu" && (
           <Card>
             <CardHeader title={`📤 Toplu Yükleme — ${egitimAdi}`} />
             <div style={{ padding: 20 }}>
               <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 8, background: "#0f172a", borderRadius: 8, padding: 12 }}>
-                📌 Format: <span style={{ color: "#60a5fa", fontFamily: "monospace" }}>TC No [TAB veya ;] Eğitim Tarihi (DD.MM.YYYY veya YYYY-MM-DD)</span><br/>
-                Örnek: <span style={{ color: "#4ade80", fontFamily: "monospace" }}>12345678901	15.03.2025</span>
+                📌 Format: <span style={{ color: "#60a5fa", fontFamily: "monospace" }}>TC No [TAB] Eğitim1 Tarihi [TAB] Eğitim2 Tarihi (opsiyonel)</span><br/>
+                Örnek: <span style={{ color: "#4ade80", fontFamily: "monospace" }}>12345678901{"	"}15.01.2025{"	"}20.02.2025</span><br/>
+                <span style={{ color: "#fbbf24" }}>⚠️ {firma?.tehlike_sinifi}: Eğitim1={tehlike?.egitim1Saat}s{tehlike?.egitim2Saat > 0 ? `, Eğitim2=${tehlike?.egitim2Saat}s` : " (tek eğitim yeterli)"}, Hedef={tehlike?.toplamSaat}s</span>
               </div>
               <textarea value={topluMetin} onChange={e => setTopluMetin(e.target.value)} rows={8}
-                placeholder={"12345678901\t15.03.2025\n98765432101\t20.03.2025\n..."}
+                placeholder={"TC No\tEğitim1 Tarihi\tEğitim2 Tarihi\n12345678901\t15.01.2025\t20.02.2025"}
                 style={{ width: "100%", padding: "10px 14px", background: "#0f172a", border: "1px solid #374151", borderRadius: 8, color: "#e5e7eb", fontSize: 13, resize: "vertical", boxSizing: "border-box", fontFamily: "monospace", marginBottom: 12 }} />
               <div style={{ display: "flex", gap: 10 }}>
                 <Btn onClick={topluKarsilastir} disabled={!topluMetin.trim()} variant="secondary">🔍 Kontrol Et</Btn>
@@ -1109,7 +1210,6 @@ export default function App() {
                 </Btn>}
                 {topluSonuc && <Btn onClick={() => setTopluSonuc(null)} variant="danger">İptal</Btn>}
               </div>
-
               {topluSonuc && (
                 <div style={{ marginTop: 20 }}>
                   {topluSonuc.basarili.length > 0 && (
@@ -1117,24 +1217,29 @@ export default function App() {
                       <div style={{ fontWeight: 700, color: "#4ade80", marginBottom: 8 }}>✅ Eklenecek ({topluSonuc.basarili.length})</div>
                       <table style={{ width: "100%", borderCollapse: "collapse" }}>
                         <thead><tr style={{ background: "#0f172a" }}>
-                          {["Ad Soyad", "Görev", "TC No", "Eğitim Tarihi"].map(h => <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontSize: 11, color: "#6b7280", fontWeight: 700 }}>{h}</th>)}
+                          {["Ad Soyad", "TC No", "Eğitim 1", "Eğitim 2", "Toplam"].map(h => <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontSize: 11, color: "#6b7280", fontWeight: 700 }}>{h}</th>)}
                         </tr></thead>
                         <tbody>
-                          {topluSonuc.basarili.map((k, i) => (
-                            <tr key={i} style={{ borderTop: "1px solid #1f2937" }}>
-                              <td style={{ padding: "9px 12px", color: "#f3f4f6", fontSize: 13 }}>{k.p.ad_soyad}</td>
-                              <td style={{ padding: "9px 12px", color: "#9ca3af", fontSize: 13 }}>{k.p.gorev}</td>
-                              <td style={{ padding: "9px 12px", color: "#6b7280", fontSize: 12, fontFamily: "monospace" }}>{k.p.tc_no}</td>
-                              <td style={{ padding: "9px 12px", color: "#4ade80", fontSize: 13 }}>{formatTarih(k.tarih)}</td>
-                            </tr>
-                          ))}
+                          {topluSonuc.basarili.map((k, i) => {
+                            const saat1 = tehlike?.egitim1Saat || 0;
+                            const saat2 = k.tarih2 && tehlike?.egitim2Saat > 0 ? tehlike.egitim2Saat : 0;
+                            return (
+                              <tr key={i} style={{ borderTop: "1px solid #1f2937" }}>
+                                <td style={{ padding: "9px 12px", color: "#f3f4f6", fontSize: 13 }}>{k.p.ad_soyad}</td>
+                                <td style={{ padding: "9px 12px", color: "#6b7280", fontSize: 12, fontFamily: "monospace" }}>{k.p.tc_no}</td>
+                                <td style={{ padding: "9px 12px", color: "#4ade80", fontSize: 13 }}>{formatTarih(k.tarih1)} <span style={{ color: "#6b7280" }}>({saat1}s)</span></td>
+                                <td style={{ padding: "9px 12px", fontSize: 13 }}>{k.tarih2 ? <span style={{ color: "#4ade80" }}>{formatTarih(k.tarih2)} <span style={{ color: "#6b7280" }}>({tehlike?.egitim2Saat}s)</span></span> : <span style={{ color: "#4b5563" }}>—</span>}</td>
+                                <td style={{ padding: "9px 12px", fontWeight: 700, color: (saat1+saat2) >= (tehlike?.toplamSaat||0) ? "#4ade80" : "#fbbf24" }}>{saat1+saat2}/{tehlike?.toplamSaat}s</td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
                   )}
                   {topluSonuc.hatali.length > 0 && (
                     <div>
-                      <div style={{ fontWeight: 700, color: "#f87171", marginBottom: 8 }}>❌ Hatalı Satırlar ({topluSonuc.hatali.length})</div>
+                      <div style={{ fontWeight: 700, color: "#f87171", marginBottom: 8 }}>❌ Hatalı ({topluSonuc.hatali.length})</div>
                       {topluSonuc.hatali.map((h, i) => (
                         <div key={i} style={{ background: "#1f0707", borderRadius: 6, padding: "7px 12px", marginBottom: 4, fontSize: 12, color: "#fca5a5" }}>
                           <span style={{ fontFamily: "monospace" }}>{h.satir}</span> — {h.sebep}
