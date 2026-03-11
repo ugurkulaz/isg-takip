@@ -11,7 +11,7 @@ const EGITIM_TURLERI = [
   { id: "isg",     ad: "İSG Temel Eğitimi",  icon: "🛡️", periyotFn: (t) => TEHLIKE[t]?.sure || 24 },
   { id: "yangin",  ad: "Yangın Güvenliği",   icon: "🔥", periyotFn: () => 12 },
   { id: "ilkyard", ad: "İlk Yardım",         icon: "🏥", periyotFn: () => 36 },
-  { id: "kkd",     ad: "KKD Kullanımı",      icon: "⛑️", periyotFn: () => 24 },
+  { id: "kkd",     ad: "KKD Kullanımı",      icon: "⛑", periyotFn: () => 24 },
 ];
 const MUAYENE_TURLERI = [
   { id: "periyodik", ad: "Periyodik Sağlık Muayenesi", icon: "🩺", periyotFn: (t) => TEHLIKE[t]?.sure || 24 },
@@ -19,7 +19,7 @@ const MUAYENE_TURLERI = [
 ];
 const SERTIFIKA_TURLERI = [
   { id: "forklift", ad: "Forklift Operatörü",    icon: "🚜", periyot: 60 },
-  { id: "vinc",     ad: "Vinç Operatörü",         icon: "🏗️", periyot: 60 },
+  { id: "vinc",     ad: "Vinç Operatörü",         icon: "🏗", periyot: 60 },
   { id: "elektrik", ad: "Elektrik Yetki Belgesi", icon: "⚡", periyot: 60 },
   { id: "kaynak",   ad: "Kaynak Sertifikası",     icon: "🔧", periyot: 36 },
 ];
