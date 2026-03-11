@@ -281,15 +281,18 @@ export default function App() {
     await veriYukle();
   };
   const egitimKaydet = async (personelId, tur, tarih) => {
-    await supabase.from("egitimler").insert({ personel_id: personelId, egitim_turu: tur, egitim_tarihi: tarih });
+    const { error } = await supabase.from("egitimler").insert({ personel_id: personelId, egitim_turu: tur, egitim_tarihi: tarih });
+    if (error) { alert("Hata: " + error.message); return; }
     await veriYukle();
   };
   const muayeneKaydet = async (personelId, tur, tarih) => {
-    await supabase.from("muayeneler").insert({ personel_id: personelId, muayene_turu: tur, muayene_tarihi: tarih });
+    const { error } = await supabase.from("muayeneler").insert({ personel_id: personelId, muayene_turu: tur, muayene_tarihi: tarih });
+    if (error) { alert("Hata: " + error.message); return; }
     await veriYukle();
   };
   const sertifikaKaydet = async (personelId, tur, tarih) => {
-    await supabase.from("sertifikalar").insert({ personel_id: personelId, sertifika_turu: tur, verilis_tarihi: tarih });
+    const { error } = await supabase.from("sertifikalar").insert({ personel_id: personelId, sertifika_turu: tur, verilis_tarihi: tarih });
+    if (error) { alert("Hata: " + error.message); return; }
     await veriYukle();
   };
 
@@ -437,6 +440,23 @@ export default function App() {
   const PersonelDetay = ({ p }) => {
     const firma = firmalar.find(f => f.id === p.firma_id);
     const [tarihler, setTarihler] = useState({});
+    const [gecmisAc, setGecmisAc] = useState({});
+
+    const egitimSil = async (id) => {
+      if (!window.confirm("Bu kaydı silmek istediğinize emin misiniz?")) return;
+      await supabase.from("egitimler").delete().eq("id", id);
+      await veriYukle();
+    };
+    const muayeneSil = async (id) => {
+      if (!window.confirm("Bu kaydı silmek istediğinize emin misiniz?")) return;
+      await supabase.from("muayeneler").delete().eq("id", id);
+      await veriYukle();
+    };
+    const sertifikaSil = async (id) => {
+      if (!window.confirm("Bu kaydı silmek istediğinize emin misiniz?")) return;
+      await supabase.from("sertifikalar").delete().eq("id", id);
+      await veriYukle();
+    };
     return (
       <Modal title={p.ad_soyad} onClose={() => setSecPersonel(null)} width={640}>
         <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 16 }}>
@@ -449,7 +469,8 @@ export default function App() {
         </div>
         {aktifTab === "egitim" && EGITIM_TURLERI.map(e => {
           const periyot = e.periyotFn(firma?.tehlike_sinifi);
-          const son = sonEgitimBul(p.id, e.id);
+          const tumKayitlar = egitimler.filter(x => x.personel_id === p.id && x.egitim_turu === e.id).sort((a,b) => new Date(b.egitim_tarihi) - new Date(a.egitim_tarihi));
+          const son = tumKayitlar[0]?.egitim_tarihi || null;
           const d = durumHesapla(son, periyot);
           return (
             <div key={e.id} style={{ background: "#111827", borderRadius: 10, padding: 14, marginBottom: 10, border: "1px solid #1f2937" }}>
@@ -461,18 +482,35 @@ export default function App() {
                 </div>
                 <Badge d={d} tarih={son} />
               </div>
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: tumKayitlar.length > 0 ? 8 : 0 }}>
                 <input type="date" value={tarihler[e.id] || ""} onChange={ev => setTarihler(t => ({ ...t, [e.id]: ev.target.value }))}
-                  placeholder="Tarih seçin"
                   style={{ flex: 1, padding: "7px 12px", background: "#0f172a", border: "1px solid #374151", borderRadius: 7, color: tarihler[e.id] ? "#e5e7eb" : "#6b7280", fontSize: 13 }} />
                 <Btn variant="success" style={{ padding: "7px 14px", opacity: tarihler[e.id] ? 1 : 0.4 }} disabled={!tarihler[e.id]} onClick={() => { egitimKaydet(p.id, e.id, tarihler[e.id]); setTarihler(t => ({ ...t, [e.id]: "" })); }}>Kaydet</Btn>
               </div>
+              {tumKayitlar.length > 0 && (
+                <div>
+                  <button onClick={() => setGecmisAc(g => ({ ...g, [e.id]: !g[e.id] }))} style={{ background: "none", border: "none", color: "#6b7280", fontSize: 12, cursor: "pointer", padding: "2px 0" }}>
+                    {gecmisAc[e.id] ? "▲ Geçmişi gizle" : `▼ Geçmiş kayıtlar (${tumKayitlar.length})`}
+                  </button>
+                  {gecmisAc[e.id] && (
+                    <div style={{ marginTop: 8, borderTop: "1px solid #1f2937", paddingTop: 8 }}>
+                      {tumKayitlar.map((k, i) => (
+                        <div key={k.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "5px 0", borderBottom: i < tumKayitlar.length-1 ? "1px solid #1f2937" : "none" }}>
+                          <span style={{ fontSize: 13, color: i === 0 ? "#4ade80" : "#9ca3af" }}>{i === 0 ? "✅ " : "  "}{formatTarih(k.egitim_tarihi)}</span>
+                          <button onClick={() => egitimSil(k.id)} style={{ background: "#1f0707", border: "1px solid #7f1d1d", color: "#f87171", borderRadius: 6, padding: "3px 8px", cursor: "pointer", fontSize: 12 }}>Sil</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           );
         })}
         {aktifTab === "muayene" && MUAYENE_TURLERI.map(m => {
           const periyot = m.periyotFn(firma?.tehlike_sinifi);
-          const son = sonMuayeneBul(p.id, m.id);
+          const tumKayitlar = muayeneler.filter(x => x.personel_id === p.id && x.muayene_turu === m.id).sort((a,b) => new Date(b.muayene_tarihi) - new Date(a.muayene_tarihi));
+          const son = tumKayitlar[0]?.muayene_tarihi || null;
           const d = durumHesapla(son, periyot);
           return (
             <div key={m.id} style={{ background: "#111827", borderRadius: 10, padding: 14, marginBottom: 10, border: "1px solid #1f2937" }}>
@@ -485,16 +523,34 @@ export default function App() {
                 {periyot && <Badge d={d} tarih={son} />}
                 {!periyot && son && <span style={{ fontSize: 12, color: "#4ade80" }}>✅ {formatTarih(son)}</span>}
               </div>
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: tumKayitlar.length > 0 ? 8 : 0 }}>
                 <input type="date" value={tarihler[`m_${m.id}`] || ""} onChange={ev => setTarihler(t => ({ ...t, [`m_${m.id}`]: ev.target.value }))}
                   style={{ flex: 1, padding: "7px 12px", background: "#0f172a", border: "1px solid #374151", borderRadius: 7, color: tarihler[`m_${m.id}`] ? "#e5e7eb" : "#6b7280", fontSize: 13 }} />
                 <Btn variant="success" style={{ padding: "7px 14px", opacity: tarihler[`m_${m.id}`] ? 1 : 0.4 }} disabled={!tarihler[`m_${m.id}`]} onClick={() => { muayeneKaydet(p.id, m.id, tarihler[`m_${m.id}`]); setTarihler(t => ({ ...t, [`m_${m.id}`]: "" })); }}>Kaydet</Btn>
               </div>
+              {tumKayitlar.length > 0 && (
+                <div>
+                  <button onClick={() => setGecmisAc(g => ({ ...g, [`m_${m.id}`]: !g[`m_${m.id}`] }))} style={{ background: "none", border: "none", color: "#6b7280", fontSize: 12, cursor: "pointer", padding: "2px 0" }}>
+                    {gecmisAc[`m_${m.id}`] ? "▲ Geçmişi gizle" : `▼ Geçmiş kayıtlar (${tumKayitlar.length})`}
+                  </button>
+                  {gecmisAc[`m_${m.id}`] && (
+                    <div style={{ marginTop: 8, borderTop: "1px solid #1f2937", paddingTop: 8 }}>
+                      {tumKayitlar.map((k, i) => (
+                        <div key={k.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "5px 0", borderBottom: i < tumKayitlar.length-1 ? "1px solid #1f2937" : "none" }}>
+                          <span style={{ fontSize: 13, color: i === 0 ? "#4ade80" : "#9ca3af" }}>{i === 0 ? "✅ " : "  "}{formatTarih(k.muayene_tarihi)}</span>
+                          <button onClick={() => muayeneSil(k.id)} style={{ background: "#1f0707", border: "1px solid #7f1d1d", color: "#f87171", borderRadius: 6, padding: "3px 8px", cursor: "pointer", fontSize: 12 }}>Sil</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           );
         })}
         {aktifTab === "sertifika" && SERTIFIKA_TURLERI.map(s => {
-          const son = sonSertifikaBul(p.id, s.id);
+          const tumKayitlar = sertifikalar.filter(x => x.personel_id === p.id && x.sertifika_turu === s.id).sort((a,b) => new Date(b.verilis_tarihi) - new Date(a.verilis_tarihi));
+          const son = tumKayitlar[0]?.verilis_tarihi || null;
           const d = durumHesapla(son, s.periyot);
           return (
             <div key={s.id} style={{ background: "#111827", borderRadius: 10, padding: 14, marginBottom: 10, border: "1px solid #1f2937" }}>
@@ -506,11 +562,28 @@ export default function App() {
                 </div>
                 {son && <Badge d={d} tarih={son} />}
               </div>
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: tumKayitlar.length > 0 ? 8 : 0 }}>
                 <input type="date" value={tarihler[`s_${s.id}`] || ""} onChange={ev => setTarihler(t => ({ ...t, [`s_${s.id}`]: ev.target.value }))}
                   style={{ flex: 1, padding: "7px 12px", background: "#0f172a", border: "1px solid #374151", borderRadius: 7, color: tarihler[`s_${s.id}`] ? "#e5e7eb" : "#6b7280", fontSize: 13 }} />
                 <Btn variant="success" style={{ padding: "7px 14px", opacity: tarihler[`s_${s.id}`] ? 1 : 0.4 }} disabled={!tarihler[`s_${s.id}`]} onClick={() => { sertifikaKaydet(p.id, s.id, tarihler[`s_${s.id}`]); setTarihler(t => ({ ...t, [`s_${s.id}`]: "" })); }}>Kaydet</Btn>
               </div>
+              {tumKayitlar.length > 0 && (
+                <div>
+                  <button onClick={() => setGecmisAc(g => ({ ...g, [`s_${s.id}`]: !g[`s_${s.id}`] }))} style={{ background: "none", border: "none", color: "#6b7280", fontSize: 12, cursor: "pointer", padding: "2px 0" }}>
+                    {gecmisAc[`s_${s.id}`] ? "▲ Geçmişi gizle" : `▼ Geçmiş kayıtlar (${tumKayitlar.length})`}
+                  </button>
+                  {gecmisAc[`s_${s.id}`] && (
+                    <div style={{ marginTop: 8, borderTop: "1px solid #1f2937", paddingTop: 8 }}>
+                      {tumKayitlar.map((k, i) => (
+                        <div key={k.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "5px 0", borderBottom: i < tumKayitlar.length-1 ? "1px solid #1f2937" : "none" }}>
+                          <span style={{ fontSize: 13, color: i === 0 ? "#4ade80" : "#9ca3af" }}>{i === 0 ? "✅ " : "  "}{formatTarih(k.verilis_tarihi)}</span>
+                          <button onClick={() => sertifikaSil(k.id)} style={{ background: "#1f0707", border: "1px solid #7f1d1d", color: "#f87171", borderRadius: 6, padding: "3px 8px", cursor: "pointer", fontSize: 12 }}>Sil</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           );
         })}
@@ -625,111 +698,4 @@ export default function App() {
                     <td style={{ padding: "12px 16px", fontWeight: 600, color: "#f3f4f6" }}>{p.ad_soyad}</td>
                     <td style={{ padding: "12px 16px", color: "#9ca3af", fontSize: 12, fontFamily: "monospace" }}>{p.tc_no}</td>
                     <td style={{ padding: "12px 16px", color: "#d1d5db", fontSize: 13 }}>{p.gorev}</td>
-                    <td style={{ padding: "12px 16px", color: "#9ca3af", fontSize: 13 }}>{formatTarih(p.ise_giris)}</td>
-                    <td style={{ padding: "12px 16px" }}><Badge d={isgD} tarih={isgTarih} /></td>
-                    <td style={{ padding: "12px 16px" }}><Badge d={perD} tarih={perTarih} /></td>
-                    <td style={{ padding: "12px 16px" }}>
-                      <Btn onClick={() => { setSecPersonel(p); setAktifTab("egitim"); }} variant="secondary" style={{ fontSize: 12, padding: "6px 12px" }}>Detay</Btn>
-                    </td>
-                  </tr>
-                );
-              })}
-              {fps.length === 0 && (
-                <tr><td colSpan={7} style={{ padding: 40, textAlign: "center", color: "#6b7280" }}>Personel yok. "Personel Güncelle" ile ekleyin.</td></tr>
-              )}
-            </tbody>
-          </table>
-        </Card>
-      </div>
-    );
-  };
-
-  const RaporSayfa = () => {
-    const kritikler = aktifPersonel.flatMap(p => {
-      const f = firmalar.find(x => x.id === p.firma_id);
-      return EGITIM_TURLERI.flatMap(e => {
-        const son = sonEgitimBul(p.id, e.id);
-        const d = durumHesapla(son, e.periyotFn(f?.tehlike_sinifi));
-        return d.onc >= 3 ? [{ p, f, tip: e.ad, icon: e.icon, d }] : [];
-      });
-    }).sort((a, b) => b.d.onc - a.d.onc);
-    return (
-      <Card>
-        <CardHeader title={`🚨 Kritik Kayıtlar (${kritikler.length})`} />
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead>
-            <tr style={{ background: "#0f172a" }}>
-              {["Personel", "Firma", "Tür", "Durum", ""].map(h => (
-                <th key={h} style={{ padding: "11px 16px", textAlign: "left", fontSize: 11, color: "#6b7280", fontWeight: 700, textTransform: "uppercase" }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {kritikler.map((k, i) => (
-              <tr key={i} style={{ borderTop: "1px solid #1f2937" }}>
-                <td style={{ padding: "12px 16px", fontWeight: 600, color: "#f3f4f6" }}>{k.p.ad_soyad}</td>
-                <td style={{ padding: "12px 16px", color: "#9ca3af", fontSize: 13 }}>{k.f?.ad}</td>
-                <td style={{ padding: "12px 16px", color: "#d1d5db", fontSize: 13 }}>{k.icon} {k.tip}</td>
-                <td style={{ padding: "12px 16px" }}><Badge d={k.d} /></td>
-                <td style={{ padding: "12px 16px" }}>
-                  <Btn onClick={() => { setSecPersonel(k.p); setAktifTab("egitim"); }} variant="danger" style={{ fontSize: 12, padding: "6px 12px" }}>Güncelle</Btn>
-                </td>
-              </tr>
-            ))}
-            {kritikler.length === 0 && (
-              <tr><td colSpan={5} style={{ padding: 40, textAlign: "center", color: "#4ade80" }}>✅ Tüm kayıtlar güncel!</td></tr>
-            )}
-          </tbody>
-        </table>
-      </Card>
-    );
-  };
-
-  // ─── RENDER ───────────────────────────────────────────────────────────────
-  if (oturumYukleniyor) return (
-    <div style={{ minHeight: "100vh", background: "#0a0f1e", display: "flex", alignItems: "center", justifyContent: "center", color: "#60a5fa", fontSize: 18 }}>
-      ⏳ Yükleniyor...
-    </div>
-  );
-
-  if (!oturum) return <GirisEkrani onGiris={() => veriYukle()} />;
-
-  if (yukleniyor) return (
-    <div style={{ minHeight: "100vh", background: "#0a0f1e", display: "flex", alignItems: "center", justifyContent: "center", color: "#60a5fa", fontSize: 18 }}>
-      ⏳ Veriler yükleniyor...
-    </div>
-  );
-
-  return (
-    <div style={{ minHeight: "100vh", background: "#0a0f1e", fontFamily: "'Segoe UI', system-ui, sans-serif", color: "#e2e8f0" }}>
-      <div style={{ background: "#0f172a", borderBottom: "1px solid #1e293b", padding: "0 24px" }}>
-        <div style={{ maxWidth: 1400, margin: "0 auto", display: "flex", alignItems: "center", height: 60, gap: 24 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ width: 36, height: 36, borderRadius: 9, background: "linear-gradient(135deg,#2563eb,#1d4ed8)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>🛡️</div>
-            <div>
-              <div style={{ fontWeight: 800, fontSize: 15, color: "#f9fafb" }}>İSG Takip Sistemi</div>
-              <div style={{ fontSize: 10, color: "#475569" }}>Eğitim · Muayene · Sertifika</div>
-            </div>
-          </div>
-          <div style={{ display: "flex", gap: 2 }}>
-            {[["dashboard","📊 Dashboard"],["personel","👷 Personel"],["rapor","📋 Raporlar"]].map(([id, label]) => (
-              <button key={id} onClick={() => setSayfa(id)} style={{ padding: "8px 16px", borderRadius: 8, border: "none", cursor: "pointer", fontSize: 13, fontWeight: 600, background: sayfa === id ? "#1d4ed8" : "transparent", color: sayfa === id ? "#fff" : "#6b7280" }}>{label}</button>
-            ))}
-          </div>
-          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12 }}>
-            <span style={{ fontSize: 12, color: "#475569" }}>{oturum?.user?.email}</span>
-            <Btn onClick={cikisYap} variant="danger" style={{ fontSize: 12, padding: "6px 12px" }}>Çıkış</Btn>
-          </div>
-        </div>
-      </div>
-      <div style={{ maxWidth: 1400, margin: "0 auto", padding: 24 }}>
-        {sayfa === "dashboard" && <Dashboard />}
-        {sayfa === "personel"  && <PersonelSayfa />}
-        {sayfa === "rapor"     && <RaporSayfa />}
-      </div>
-      {modal === "firma-ekle"        && <FirmaEkleModal />}
-      {modal === "personel-guncelle" && <PersonelGuncelleModal />}
-      {secPersonel && <PersonelDetay p={secPersonel} />}
-    </div>
-  );
-}
+                    <td style={{ paddin
