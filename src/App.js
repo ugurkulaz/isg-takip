@@ -335,6 +335,27 @@ export default function App() {
       ise_giris: g.iseGiris || bugun(),
       aktif: true
     });
+    // Mevcut personelin işe giriş tarihini ve görevini güncelle
+    const mevcutlar2 = aktifPersonel.filter(p => p.firma_id === secFirma.id);
+    const satirlar2 = importMetin.trim().split("\n").map(s => s.trim()).filter(Boolean);
+    const yeniMap = {};
+    satirlar2.forEach(s => {
+      const p = s.split(/[\t,;]/);
+      const tc = p[0]?.trim();
+      const gorev = p[2]?.trim() || "";
+      let iseGiris = p[3]?.trim() || null;
+      if (iseGiris && /^\d{2}\.\d{2}\.\d{4}$/.test(iseGiris)) {
+        const [gun, ay, yil] = iseGiris.split(".");
+        iseGiris = `${yil}-${ay}-${gun}`;
+      }
+      if (tc) yeniMap[tc] = { gorev, iseGiris };
+    });
+    for (const p of mevcutlar2) {
+      const yeni = yeniMap[p.tc_no];
+      if (yeni?.iseGiris && yeni.iseGiris !== p.ise_giris) {
+        await supabase.from("personel").update({ ise_giris: yeni.iseGiris, gorev: yeni.gorev || p.gorev }).eq("id", p.id);
+      }
+    }
     const mesajlar = [];
     if (cikmis.length) mesajlar.push({ tip: "cikis", mesaj: `${cikmis.length} personel pasife alındı` });
     if (gelen.length) mesajlar.push({ tip: "giris", mesaj: `${gelen.length} yeni personel eklendi — eğitim planlanmalı!` });
