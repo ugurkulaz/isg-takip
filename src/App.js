@@ -29,8 +29,8 @@ const sonrakiTarih = (baslangic, ayEkle) => {
   d.setMonth(d.getMonth() + ayEkle);
   return d.toISOString().split("T")[0];
 };
-const durumHesapla = (sonTarih, periyot) => {
-  if (!sonTarih || !periyot) return { label: "Kayıt Yok", renk: "#64748b", bg: "#1e293b", onc: 0 };
+const durumHesapla = (sonTarih, periyot, eksikLabel = "Eğitim Eksik") => {
+  if (!sonTarih || !periyot) return { label: eksikLabel, renk: "#ef4444", bg: "#1f0707", onc: 5 };
   const sonraki = sonrakiTarih(sonTarih, periyot);
   const gun = gunFarki(sonraki);
   if (gun < 0)   return { label: "Süresi Dolmuş", renk: "#f87171", bg: "#1f0707", onc: 4 };
@@ -252,13 +252,13 @@ export default function App() {
     let egitimKritik = 0, muayeneKritik = 0;
     fps.forEach(p => {
       egitimTurleri.forEach(e => {
-        const d = durumHesapla(sonEgitimBul(p.id, e.id), e.periyotFn(f.tehlike_sinifi));
+        const d = durumHesapla(sonEgitimBul(p.id, e.id), e.periyotFn(f.tehlike_sinifi), "Eğitim Eksik");
         if (d.onc >= 3) egitimKritik++;
       });
       MUAYENE_TURLERI.forEach(m => {
         const periyot = m.periyotFn(f.tehlike_sinifi);
         if (!periyot) return;
-        const d = durumHesapla(sonMuayeneBul(p.id, m.id), periyot);
+        const d = durumHesapla(sonMuayeneBul(p.id, m.id), periyot, "Muayene Eksik");
         if (d.onc >= 3) muayeneKritik++;
       });
     });
@@ -273,7 +273,7 @@ export default function App() {
       const f = firmalar.find(x => x.id === p.firma_id);
       if (!f) return;
       egitimTurleri.forEach(e => {
-        const d = durumHesapla(sonEgitimBul(p.id, e.id), e.periyotFn(f.tehlike_sinifi));
+        const d = durumHesapla(sonEgitimBul(p.id, e.id), e.periyotFn(f.tehlike_sinifi), "Eğitim Eksik");
         if (d.onc >= 3) kritik++;
         else if (d.onc === 2) yaklasan++;
         else if (d.onc === 1) guncel++;
@@ -530,11 +530,7 @@ export default function App() {
           const periyot = e.periyotFn(firma?.tehlike_sinifi);
           const tumKayitlar = egitimler.filter(x => x.personel_id === p.id && x.egitim_turu === e.id).sort((a,b) => new Date(b.egitim_tarihi) - new Date(a.egitim_tarihi));
           const son = tumKayitlar[0]?.egitim_tarihi || null;
-          const d = durumHesapla(son, periyot);
-          return (
-            <div key={e.id} style={{ background: "#111827", borderRadius: 10, padding: 14, marginBottom: 10, border: "1px solid #1f2937" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-                <span style={{ fontSize: 18 }}>{e.icon}</span>
+          const d = durumHesapla(son, periyot, "Eğitim Eksik");
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 600, color: "#f3f4f6" }}>{e.ad}</div>
                   <div style={{ fontSize: 12, color: "#6b7280" }}>Sonraki: {formatTarih(sonrakiTarih(son, periyot))}</div>
@@ -570,7 +566,7 @@ export default function App() {
           const periyot = m.periyotFn(firma?.tehlike_sinifi);
           const tumKayitlar = muayeneler.filter(x => x.personel_id === p.id && x.muayene_turu === m.id).sort((a,b) => new Date(b.muayene_tarihi) - new Date(a.muayene_tarihi));
           const son = tumKayitlar[0]?.muayene_tarihi || null;
-          const d = durumHesapla(son, periyot);
+          const d = durumHesapla(son, periyot, "Muayene Eksik");
           return (
             <div key={m.id} style={{ background: "#111827", borderRadius: 10, padding: 14, marginBottom: 10, border: "1px solid #1f2937" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
@@ -610,11 +606,7 @@ export default function App() {
         {aktifTab === "sertifika" && SERTIFIKA_TURLERI.map(s => {
           const tumKayitlar = sertifikalar.filter(x => x.personel_id === p.id && x.sertifika_turu === s.id).sort((a,b) => new Date(b.verilis_tarihi) - new Date(a.verilis_tarihi));
           const son = tumKayitlar[0]?.verilis_tarihi || null;
-          const d = durumHesapla(son, s.periyot);
-          return (
-            <div key={s.id} style={{ background: "#111827", borderRadius: 10, padding: 14, marginBottom: 10, border: "1px solid #1f2937" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-                <span style={{ fontSize: 18 }}>{s.icon}</span>
+          const d = durumHesapla(son, s.periyot, "Sertifika Eksik");
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 600, color: "#f3f4f6" }}>{s.ad}</div>
                   <div style={{ fontSize: 12, color: "#6b7280" }}>Periyot: {s.periyot} ay{son ? ` · Sonraki: ${formatTarih(sonrakiTarih(son, s.periyot))}` : ""}</div>
@@ -760,8 +752,8 @@ export default function App() {
                 const f = firmalar.find(x => x.id === p.firma_id);
                 const isgTarih = sonEgitimBul(p.id, "isg");
                 const perTarih = sonMuayeneBul(p.id, "periyodik");
-                const isgD = durumHesapla(isgTarih, egitimTurleri[0].periyotFn(f?.tehlike_sinifi));
-                const perD = durumHesapla(perTarih, MUAYENE_TURLERI[0].periyotFn(f?.tehlike_sinifi));
+                const isgD = durumHesapla(isgTarih, egitimTurleri[0]?.periyotFn(f?.tehlike_sinifi), "Eğitim Eksik");
+                const perD = durumHesapla(perTarih, MUAYENE_TURLERI[0].periyotFn(f?.tehlike_sinifi), "Muayene Eksik");
                 return (
                   <tr key={p.id} style={{ borderTop: "1px solid #1f2937", background: i % 2 === 0 ? "transparent" : "#0f172a22" }}>
                     <td style={{ padding: "12px 16px", fontWeight: 600, color: "#f3f4f6" }}>{p.ad_soyad}</td>
@@ -986,7 +978,7 @@ export default function App() {
       const { egitim1, egitim2 } = kisiEgitimler(p.id);
       const saatler = toplamSaatHesapla(egitim1, egitim2);
       const periyot = egitimTurleri.find(e => String(e.id) === String(egitimTuru))?.periyotFn(firma?.tehlike_sinifi);
-      const d = durumHesapla(sonTarih(egitim1, egitim2), periyot);
+      const d = durumHesapla(sonTarih(egitim1, egitim2), periyot, "Eğitim Eksik");
       return { ...p, egitim1, egitim2, saatler, d };
     }).sort((a, b) => b.d.onc - a.d.onc);
 
@@ -1342,7 +1334,7 @@ export default function App() {
     const egitimEksik = firmaPersonel.flatMap(p =>
       egitimTurleri.flatMap(e => {
         const son = sonEgitimBul(p.id, e.id);
-        const d = durumHesapla(son, e.periyotFn(firma?.tehlike_sinifi));
+        const d = durumHesapla(son, e.periyotFn(firma?.tehlike_sinifi), "Eğitim Eksik");
         return d.onc >= 3 ? [{ p, tip: e.ad, icon: e.icon, d }] : [];
       })
     ).sort((a, b) => b.d.onc - a.d.onc);
@@ -1352,7 +1344,7 @@ export default function App() {
         const son = sonMuayeneBul(p.id, m.id);
         const periyot = m.periyotFn(firma?.tehlike_sinifi);
         if (!periyot) return [];
-        const d = durumHesapla(son, periyot);
+        const d = durumHesapla(son, periyot, "Muayene Eksik");
         return d.onc >= 3 ? [{ p, tip: m.ad, icon: m.icon, d }] : [];
       })
     ).sort((a, b) => b.d.onc - a.d.onc);
