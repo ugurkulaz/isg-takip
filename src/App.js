@@ -283,15 +283,14 @@ export default function App() {
 
   const genelIstat = useMemo(() => {
     let kritik = 0, yaklasan = 0, guncel = 0;
+    const isgTur = egitimTurleri[0]; // Sadece İSG Temel Eğitimi (ilk tür)
     aktifPersonel.forEach(p => {
       const f = firmalar.find(x => x.id === p.firma_id);
-      if (!f) return;
-      egitimTurleri.forEach(e => {
-        const d = durumHesapla(sonEgitimBul(p.id, e.id), e.periyotFn(f.tehlike_sinifi), "Eğitim Eksik");
-        if (d.onc >= 3) kritik++;
-        else if (d.onc === 2) yaklasan++;
-        else if (d.onc === 1) guncel++;
-      });
+      if (!f || !isgTur) return;
+      const d = durumHesapla(sonEgitimBul(p.id, isgTur.id), isgTur.periyotFn(f.tehlike_sinifi), "Eğitim Eksik");
+      if (d.onc >= 3) kritik++;
+      else if (d.onc === 2) yaklasan++;
+      else if (d.onc === 1) guncel++;
     });
     return { toplam: aktifPersonel.length, firmaSay: firmalar.length, kritik, yaklasan, guncel };
   }, [aktifPersonel, firmalar, egitimler, egitimTurleri]);
@@ -1621,13 +1620,12 @@ export default function App() {
     const firma = firmalar.find(f => f.id === secFirmaId);
     const firmaPersonel = aktifPersonel.filter(p => p.firma_id === secFirmaId);
 
-    const egitimEksik = firmaPersonel.flatMap(p =>
-      egitimTurleri.flatMap(e => {
-        const son = sonEgitimBul(p.id, e.id);
-        const d = durumHesapla(son, e.periyotFn(firma?.tehlike_sinifi), "Eğitim Eksik");
-        return d.onc >= 3 ? [{ p, tip: e.ad, icon: e.icon, d }] : [];
-      })
-    ).sort((a, b) => b.d.onc - a.d.onc);
+    const isgTurRapor = egitimTurleri[0]; // Sadece İSG Temel Eğitimi
+    const egitimEksik = isgTurRapor ? firmaPersonel.flatMap(p => {
+      const son = sonEgitimBul(p.id, isgTurRapor.id);
+      const d = durumHesapla(son, isgTurRapor.periyotFn(firma?.tehlike_sinifi), "Eğitim Eksik");
+      return d.onc >= 3 ? [{ p, tip: isgTurRapor.ad, icon: isgTurRapor.icon, d }] : [];
+    }).sort((a, b) => b.d.onc - a.d.onc) : [];
 
     const muayeneEksik = firmaPersonel.flatMap(p =>
       MUAYENE_TURLERI.flatMap(m => {
