@@ -847,23 +847,125 @@ export default function App() {
   };
 
   const DOKUMAN_KATEGORILER = [
-    { id: "risk", ad: "Risk Değerlendirmesi", icon: "⚠️" },
-    { id: "acil", ad: "Acil Durum", icon: "🚨" },
-    { id: "isgkurul", ad: "İSG Kurulu", icon: "👥" },
-    { id: "plan", ad: "Yıllık Plan & Rapor", icon: "📅" },
-    { id: "atama", ad: "Atama & Görevlendirme", icon: "📌" },
-    { id: "diger", ad: "Diğer", icon: "📄" },
+    { id: "risk",      ad: "Risk Değerlendirmesi",      icon: "⚠️" },
+    { id: "acil",      ad: "Acil Durum",                icon: "🚨" },
+    { id: "tespit",    ad: "Tespit ve Öneri",           icon: "📝" },
+    { id: "calisan",   ad: "Çalışan Temsilcisi",        icon: "🙋" },
+    { id: "plan",      ad: "Yıllık Plan & Rapor",       icon: "📅" },
+    { id: "isgkurul",  ad: "İSG Kurulu",                icon: "👥" },
+    { id: "tatbikat",  ad: "Tatbikat",                  icon: "🧯" },
+    { id: "diger",     ad: "Diğer",                     icon: "📄" },
+  ];
+  // Standart doküman şablonları — tehlike sınıfına göre geçerlilik süresi (ay), null = süresiz
+  const STANDART_DOKUMANLAR = [
+    // Risk
+    { kategori: "risk",     baslik: "Risk Değerlendirmesi",                periyot: { "Çok Tehlikeli": 24, "Tehlikeli": 48, "Az Tehlikeli": 72 } },
+    { kategori: "risk",     baslik: "Risk Değerlendirmesi Ekibi Atama Yazısı", periyot: null },
+    // Acil Durum
+    { kategori: "acil",     baslik: "Acil Durum Eylem Planı",              periyot: { "Çok Tehlikeli": 24, "Tehlikeli": 48, "Az Tehlikeli": 72 } },
+    { kategori: "acil",     baslik: "Acil Durum Ekipleri Atama Yazısı",    periyot: null },
+    { kategori: "acil",     baslik: "Acil Durum Ekibi Eğitimleri",         periyot: null },
+    // Tespit
+    { kategori: "tespit",   baslik: "Tespit ve Öneri Defteri",             periyot: null },
+    // Çalışan Temsilcisi
+    { kategori: "calisan",  baslik: "Çalışan Temsilcisi Atama Yazısı",     periyot: null },
+    { kategori: "calisan",  baslik: "Çalışan Temsilcisi Eğitimi",          periyot: null },
+    // Yıllık Plan
+    { kategori: "plan",     baslik: "Yıllık Eğitim Planı",                 periyot: { "Çok Tehlikeli": 12, "Tehlikeli": 12, "Az Tehlikeli": 12 } },
+    { kategori: "plan",     baslik: "Yıllık Çalışma Planı",                periyot: { "Çok Tehlikeli": 12, "Tehlikeli": 12, "Az Tehlikeli": 12 } },
+    { kategori: "plan",     baslik: "Yıllık Değerlendirme Planı",          periyot: { "Çok Tehlikeli": 12, "Tehlikeli": 12, "Az Tehlikeli": 12 } },
+    // İSG Kurulu
+    { kategori: "isgkurul", baslik: "İSG Kurulu Tarihi",                   periyot: { "Çok Tehlikeli": 12, "Tehlikeli": 24, "Az Tehlikeli": 24 } },
+    { kategori: "isgkurul", baslik: "İSG Kurul Ekibi Atama Yazısı",        periyot: null },
+    { kategori: "isgkurul", baslik: "İSG Kurul Ekibi Eğitimi",             periyot: null },
+    // Tatbikat
+    { kategori: "tatbikat", baslik: "Acil Durum Tatbikatı",                periyot: { "Çok Tehlikeli": 12, "Tehlikeli": 12, "Az Tehlikeli": 12 } },
   ];
   const DURUM_SECENEKLER = ["VAR", "YOK", "İMZADA", "PLANLANACAK", "DEĞİŞECEK"];
   const DURUM_RENKLER = { "VAR": "#4ade80", "YOK": "#f87171", "İMZADA": "#fbbf24", "PLANLANACAK": "#60a5fa", "DEĞİŞECEK": "#fb923c" };
 
   const DokumanlarSayfa = () => {
     const [secFirmaId, setSecFirmaId] = useState(firmalar[0]?.id || null);
-    const [yeniForm, setYeniForm] = useState({ kategori: "risk", baslik: "", durum: "VAR", tarih: "", notlar: "" });
+    const [yeniForm, setYeniForm] = useState({ kategori: "diger", baslik: "", durum: "VAR", tarih: "", notlar: "" });
+    const [yeniFormAc, setYeniFormAc] = useState(false);
     const [duzenleId, setDuzenleId] = useState(null);
     const [duzenleForm, setDuzenleForm] = useState({});
     const firma = firmalar.find(f => f.id === secFirmaId);
+    const tehlike = firma?.tehlike_sinifi || "Tehlikeli";
     const firmaDokumanlari = dokumanlar.filter(d => d.firma_id === secFirmaId);
+
+    // Her standart doküman için DB kaydını bul
+    const standartSatirlar = STANDART_DOKUMANLAR.map(sd => {
+      const kayit = firmaDokumanlari.find(d => d.baslik === sd.baslik && d.kategori === sd.kategori);
+      const periyotAy = sd.periyot ? (sd.periyot[tehlike] || null) : null;
+      // Geçerlilik durumu hesapla
+      let gecerlilik = null;
+      if (kayit && kayit.tarih && periyotAy) {
+        const gun = gunFarki(sonrakiTarih(kayit.tarih, periyotAy));
+        if (gun < 0)   gecerlilik = { label: "Süresi Doldu", renk: "#e74c3c", bg: "#fdedec" };
+        else if (gun <= 30)  gecerlilik = { label: "Kritik", renk: "#e67e22", bg: "#fdf2e9" };
+        else if (gun <= 90)  gecerlilik = { label: "Yaklaşıyor", renk: "#d4ac0d", bg: "#fef9e7" };
+        else gecerlilik = { label: "Güncel", renk: "#27ae60", bg: "#eafaf1" };
+      }
+      return { ...sd, kayit, periyotAy, gecerlilik };
+    });
+
+    // Sadece DB'ye eklenmiş özel dokümanlar (standart listede olmayanlar)
+    const ozelDokumanlar = firmaDokumanlari.filter(d =>
+      !STANDART_DOKUMANLAR.some(sd => sd.baslik === d.baslik && sd.kategori === d.kategori)
+    );
+
+    const satirGuncelle = async (kayitId, data) => {
+      await dokumanGuncelle(kayitId, data);
+      setDuzenleId(null);
+    };
+
+    const satirEkleYaGuncelle = async (sd, durum, tarih, notlar) => {
+      if (sd.kayit) {
+        await dokumanGuncelle(sd.kayit.id, { durum, tarih: tarih || null, notlar });
+      } else {
+        await dokumanKaydet(secFirmaId, sd.kategori, sd.baslik, durum, tarih, notlar);
+      }
+    };
+
+    const SatirDuzenle = ({ sd }) => {
+      const [form, setForm] = useState({
+        durum: sd.kayit?.durum || "YOK",
+        tarih: sd.kayit?.tarih || "",
+        notlar: sd.kayit?.notlar || "",
+      });
+      return (
+        <tr style={{ background: "#fffbeb", borderTop: "1px solid #dde3e0" }}>
+          <td style={{ padding: "8px 12px", fontSize: 12, color: "#6b7280", whiteSpace: "nowrap" }}>
+            <span style={{ background: "#F4F7F6", borderRadius: 5, padding: "2px 7px" }}>
+              {DOKUMAN_KATEGORILER.find(k => k.id === sd.kategori)?.icon} {DOKUMAN_KATEGORILER.find(k => k.id === sd.kategori)?.ad}
+            </span>
+          </td>
+          <td style={{ padding: "8px 12px", color: "#233142", fontSize: 13, fontWeight: 600 }}>{sd.baslik}</td>
+          <td style={{ padding: "8px 12px" }}>
+            <select value={form.durum} onChange={e => setForm(f => ({ ...f, durum: e.target.value }))}
+              style={{ padding: "5px 8px", background: "#F4F7F6", border: "1px solid #dde3e0", borderRadius: 6, color: DURUM_RENKLER[form.durum], fontSize: 13, fontWeight: 700 }}>
+              {DURUM_SECENEKLER.map(d => <option key={d} value={d}>{d}</option>)}
+            </select>
+          </td>
+          <td style={{ padding: "8px 12px" }}>
+            {sd.periyotAy ? (
+              <input type="date" value={form.tarih} onChange={e => setForm(f => ({ ...f, tarih: e.target.value }))}
+                style={{ padding: "5px 8px", background: "#F4F7F6", border: "1px solid #dde3e0", borderRadius: 6, color: "#454545", fontSize: 13 }} />
+            ) : <span style={{ color: "#ADB5BD", fontSize: 12 }}>—</span>}
+          </td>
+          <td style={{ padding: "8px 12px" }}>
+            <input value={form.notlar} onChange={e => setForm(f => ({ ...f, notlar: e.target.value }))} placeholder="Not..."
+              style={{ width: "100%", padding: "5px 8px", background: "#F4F7F6", border: "1px solid #dde3e0", borderRadius: 6, color: "#454545", fontSize: 12 }} />
+          </td>
+          <td style={{ padding: "8px 12px", whiteSpace: "nowrap" }}>
+            <Btn variant="success" style={{ fontSize: 12, padding: "5px 10px", marginRight: 4 }}
+              onClick={async () => { await satirEkleYaGuncelle(sd, form.durum, form.tarih, form.notlar); setDuzenleId(null); }}>✓ Kaydet</Btn>
+            <Btn variant="secondary" style={{ fontSize: 12, padding: "5px 10px" }} onClick={() => setDuzenleId(null)}>✕</Btn>
+          </td>
+        </tr>
+      );
+    };
 
     return (
       <div>
@@ -874,142 +976,183 @@ export default function App() {
             {firmalar.map(f => <option key={f.id} value={f.id}>{f.ad}</option>)}
           </select>
           {firma && (
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <span style={{ background: "#ecf0f1", borderRadius: 8, padding: "6px 12px", fontSize: 13, color: "#ADB5BD" }}>
-                {TEHLIKE[firma.tehlike_sinifi]?.icon} {firma.tehlike_sinifi}
-              </span>
-              {firma.calisansayisi > 0 && <span style={{ background: "#ecf0f1", borderRadius: 8, padding: "6px 12px", fontSize: 13, color: "#ADB5BD" }}>👷 {firma.calisansayisi} çalışan</span>}
-              {firma.sorumlu_kisi && <span style={{ background: "#ecf0f1", borderRadius: 8, padding: "6px 12px", fontSize: 13, color: "#ADB5BD" }}>👤 {firma.sorumlu_kisi}</span>}
-              {firma.iletisim && <span style={{ background: "#ecf0f1", borderRadius: 8, padding: "6px 12px", fontSize: 13, color: "#ADB5BD" }}>📞 {firma.iletisim}</span>}
-            </div>
+            <span style={{ background: "#ecf0f1", borderRadius: 8, padding: "6px 12px", fontSize: 13, color: "#ADB5BD" }}>
+              {TEHLIKE[tehlike]?.icon} {tehlike}
+            </span>
           )}
-          {firma && <Btn onClick={() => setSecFirmaDetay(firma)} variant="secondary" style={{ fontSize: 12, padding: "7px 14px", marginLeft: "auto" }}>✏️ Firma Güncelle</Btn>}
+          {firma && <Btn onClick={() => setSecFirmaDetay(firma)} variant="secondary" style={{ fontSize: 12, padding: "7px 14px" }}>✏️ Firma Güncelle</Btn>}
+          <Btn onClick={() => setYeniFormAc(v => !v)} variant="success" style={{ fontSize: 13, padding: "8px 16px", marginLeft: "auto" }}>
+            {yeniFormAc ? "✕ Kapat" : "➕ Özel Doküman Ekle"}
+          </Btn>
         </div>
 
-        {/* Yeni doküman ekle */}
-        <Card style={{ marginBottom: 20 }}>
-          <CardHeader title="➕ Yeni Doküman / Kayıt Ekle" />
-          <div style={{ padding: 16, display: "grid", gridTemplateColumns: "1fr 2fr 1fr 1fr", gap: 12 }}>
-            <div>
-              <label style={{ display: "block", fontSize: 12, color: "#ADB5BD", marginBottom: 5 }}>Kategori</label>
-              <select value={yeniForm.kategori} onChange={e => setYeniForm(f => ({ ...f, kategori: e.target.value }))}
-                style={{ width: "100%", padding: "8px 10px", background: "#F4F7F6", border: "1px solid #dde3e0", borderRadius: 7, color: "#454545", fontSize: 13 }}>
-                {DOKUMAN_KATEGORILER.map(k => <option key={k.id} value={k.id}>{k.icon} {k.ad}</option>)}
-              </select>
+        {/* Özel doküman ekleme formu */}
+        {yeniFormAc && (
+          <Card style={{ marginBottom: 16 }}>
+            <CardHeader title="➕ Özel Doküman Ekle" />
+            <div style={{ padding: 16, display: "grid", gridTemplateColumns: "1fr 2fr 1fr 1fr", gap: 12 }}>
+              <div>
+                <label style={{ display: "block", fontSize: 12, color: "#ADB5BD", marginBottom: 5 }}>Kategori</label>
+                <select value={yeniForm.kategori} onChange={e => setYeniForm(f => ({ ...f, kategori: e.target.value }))}
+                  style={{ width: "100%", padding: "8px 10px", background: "#F4F7F6", border: "1px solid #dde3e0", borderRadius: 7, color: "#454545", fontSize: 13 }}>
+                  {DOKUMAN_KATEGORILER.map(k => <option key={k.id} value={k.id}>{k.icon} {k.ad}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: 12, color: "#ADB5BD", marginBottom: 5 }}>Başlık / Açıklama</label>
+                <input value={yeniForm.baslik} onChange={e => setYeniForm(f => ({ ...f, baslik: e.target.value }))} placeholder="Doküman adı"
+                  style={{ width: "100%", padding: "8px 10px", background: "#F4F7F6", border: "1px solid #dde3e0", borderRadius: 7, color: "#454545", fontSize: 13, boxSizing: "border-box" }} />
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: 12, color: "#ADB5BD", marginBottom: 5 }}>Durum</label>
+                <select value={yeniForm.durum} onChange={e => setYeniForm(f => ({ ...f, durum: e.target.value }))}
+                  style={{ width: "100%", padding: "8px 10px", background: "#F4F7F6", border: "1px solid #dde3e0", borderRadius: 7, color: DURUM_RENKLER[yeniForm.durum], fontSize: 13, fontWeight: 700 }}>
+                  {DURUM_SECENEKLER.map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: 12, color: "#ADB5BD", marginBottom: 5 }}>Tarih</label>
+                <input type="date" value={yeniForm.tarih} onChange={e => setYeniForm(f => ({ ...f, tarih: e.target.value }))}
+                  style={{ width: "100%", padding: "8px 10px", background: "#F4F7F6", border: "1px solid #dde3e0", borderRadius: 7, color: "#454545", fontSize: 13, boxSizing: "border-box" }} />
+              </div>
             </div>
-            <div>
-              <label style={{ display: "block", fontSize: 12, color: "#ADB5BD", marginBottom: 5 }}>Başlık / Açıklama</label>
-              <input value={yeniForm.baslik} onChange={e => setYeniForm(f => ({ ...f, baslik: e.target.value }))} placeholder="Örn: Risk değerlendirmesi yapıldı"
-                style={{ width: "100%", padding: "8px 10px", background: "#F4F7F6", border: "1px solid #dde3e0", borderRadius: 7, color: "#454545", fontSize: 13, boxSizing: "border-box" }} />
+            <div style={{ padding: "0 16px 16px", display: "flex", gap: 12 }}>
+              <input value={yeniForm.notlar} onChange={e => setYeniForm(f => ({ ...f, notlar: e.target.value }))} placeholder="Notlar (isteğe bağlı)"
+                style={{ flex: 1, padding: "8px 10px", background: "#F4F7F6", border: "1px solid #dde3e0", borderRadius: 7, color: "#454545", fontSize: 13 }} />
+              <Btn onClick={async () => {
+                if (!yeniForm.baslik || !secFirmaId) return;
+                await dokumanKaydet(secFirmaId, yeniForm.kategori, yeniForm.baslik, yeniForm.durum, yeniForm.tarih, yeniForm.notlar);
+                setYeniForm({ kategori: "diger", baslik: "", durum: "VAR", tarih: "", notlar: "" });
+                setYeniFormAc(false);
+              }} variant="success" disabled={!yeniForm.baslik}>Ekle</Btn>
             </div>
-            <div>
-              <label style={{ display: "block", fontSize: 12, color: "#ADB5BD", marginBottom: 5 }}>Durum</label>
-              <select value={yeniForm.durum} onChange={e => setYeniForm(f => ({ ...f, durum: e.target.value }))}
-                style={{ width: "100%", padding: "8px 10px", background: "#F4F7F6", border: "1px solid #dde3e0", borderRadius: 7, color: DURUM_RENKLER[yeniForm.durum] || "#e5e7eb", fontSize: 13, fontWeight: 700 }}>
-                {DURUM_SECENEKLER.map(d => <option key={d} value={d}>{d}</option>)}
-              </select>
-            </div>
-            <div>
-              <label style={{ display: "block", fontSize: 12, color: "#ADB5BD", marginBottom: 5 }}>Tarih</label>
-              <input type="date" value={yeniForm.tarih} onChange={e => setYeniForm(f => ({ ...f, tarih: e.target.value }))}
-                style={{ width: "100%", padding: "8px 10px", background: "#F4F7F6", border: "1px solid #dde3e0", borderRadius: 7, color: "#454545", fontSize: 13, boxSizing: "border-box" }} />
-            </div>
-          </div>
-          <div style={{ padding: "0 16px 16px", display: "flex", gap: 12 }}>
-            <input value={yeniForm.notlar} onChange={e => setYeniForm(f => ({ ...f, notlar: e.target.value }))} placeholder="Notlar (isteğe bağlı)"
-              style={{ flex: 1, padding: "8px 10px", background: "#F4F7F6", border: "1px solid #dde3e0", borderRadius: 7, color: "#454545", fontSize: 13 }} />
-            <Btn onClick={async () => {
-              if (!yeniForm.baslik || !secFirmaId) return;
-              await dokumanKaydet(secFirmaId, yeniForm.kategori, yeniForm.baslik, yeniForm.durum, yeniForm.tarih, yeniForm.notlar);
-              setYeniForm({ kategori: "risk", baslik: "", durum: "VAR", tarih: "", notlar: "" });
-            }} variant="success" disabled={!yeniForm.baslik}>Ekle</Btn>
-          </div>
-        </Card>
-
-        {/* Doküman listesi — tek birleşik tablo */}
-        {firmaDokumanlari.length > 0 ? (
-          <Card>
-            <CardHeader title={`📋 Tüm Dokümanlar — ${firma?.ad || ""} (${firmaDokumanlari.length})`} />
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead>
-                <tr style={{ background: "#F4F7F6" }}>
-                  {["Kategori", "Başlık", "Durum", "Tarih", "Notlar", ""].map(h => (
-                    <th key={h} style={{ padding: "9px 16px", textAlign: "left", fontSize: 11, color: "#233142", fontWeight: 700, textTransform: "uppercase" }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {firmaDokumanlari.sort((a,b) => {
-                  // Önce kategoriye göre sırala, sonra tarihe göre
-                  const katA = DOKUMAN_KATEGORILER.findIndex(k => k.id === a.kategori);
-                  const katB = DOKUMAN_KATEGORILER.findIndex(k => k.id === b.kategori);
-                  if (katA !== katB) return katA - katB;
-                  return new Date(b.created_at) - new Date(a.created_at);
-                }).map((k, i) => {
-                  const kat = DOKUMAN_KATEGORILER.find(x => x.id === k.kategori);
-                  return (
-                    <tr key={k.id} style={{ borderTop: "1px solid #dde3e0", background: i % 2 === 0 ? "transparent" : "#F4F7F633" }}>
-                      {duzenleId === k.id ? (
-                        <>
-                          <td style={{ padding: "8px 16px" }}>
-                            <select value={duzenleForm.kategori || k.kategori} onChange={e => setDuzenleForm(f => ({ ...f, kategori: e.target.value }))}
-                              style={{ padding: "6px 8px", background: "#F4F7F6", border: "1px solid #dde3e0", borderRadius: 6, color: "#454545", fontSize: 12 }}>
-                              {DOKUMAN_KATEGORILER.map(dk => <option key={dk.id} value={dk.id}>{dk.icon} {dk.ad}</option>)}
-                            </select>
-                          </td>
-                          <td style={{ padding: "8px 16px" }}>
-                            <input value={duzenleForm.baslik} onChange={e => setDuzenleForm(f => ({ ...f, baslik: e.target.value }))}
-                              style={{ width: "100%", padding: "6px 8px", background: "#F4F7F6", border: "1px solid #dde3e0", borderRadius: 6, color: "#454545", fontSize: 13 }} />
-                          </td>
-                          <td style={{ padding: "8px 16px" }}>
-                            <select value={duzenleForm.durum} onChange={e => setDuzenleForm(f => ({ ...f, durum: e.target.value }))}
-                              style={{ padding: "6px 8px", background: "#F4F7F6", border: "1px solid #dde3e0", borderRadius: 6, color: DURUM_RENKLER[duzenleForm.durum], fontSize: 13, fontWeight: 700 }}>
-                              {DURUM_SECENEKLER.map(d => <option key={d} value={d}>{d}</option>)}
-                            </select>
-                          </td>
-                          <td style={{ padding: "8px 16px" }}>
-                            <input type="date" value={duzenleForm.tarih || ""} onChange={e => setDuzenleForm(f => ({ ...f, tarih: e.target.value }))}
-                              style={{ padding: "6px 8px", background: "#F4F7F6", border: "1px solid #dde3e0", borderRadius: 6, color: "#454545", fontSize: 13 }} />
-                          </td>
-                          <td style={{ padding: "8px 16px" }}>
-                            <input value={duzenleForm.notlar || ""} onChange={e => setDuzenleForm(f => ({ ...f, notlar: e.target.value }))}
-                              style={{ width: "100%", padding: "6px 8px", background: "#F4F7F6", border: "1px solid #dde3e0", borderRadius: 6, color: "#454545", fontSize: 13 }} />
-                          </td>
-                          <td style={{ padding: "8px 16px", display: "flex", gap: 6 }}>
-                            <Btn variant="success" style={{ fontSize: 12, padding: "5px 10px" }} onClick={async () => { await dokumanGuncelle(k.id, duzenleForm); setDuzenleId(null); }}>✓</Btn>
-                            <Btn variant="secondary" style={{ fontSize: 12, padding: "5px 10px" }} onClick={() => setDuzenleId(null)}>✕</Btn>
-                          </td>
-                        </>
-                      ) : (
-                        <>
-                          <td style={{ padding: "11px 16px", fontSize: 12, color: "#6b7280", whiteSpace: "nowrap" }}>
-                            <span style={{ background: "#F4F7F6", borderRadius: 6, padding: "3px 8px" }}>{kat?.icon} {kat?.ad}</span>
-                          </td>
-                          <td style={{ padding: "11px 16px", color: "#454545", fontSize: 13, fontWeight: 500 }}>{k.baslik}</td>
-                          <td style={{ padding: "11px 16px" }}>
-                            <span style={{ color: DURUM_RENKLER[k.durum] || "#9ca3af", fontWeight: 700, fontSize: 13 }}>{k.durum}</span>
-                          </td>
-                          <td style={{ padding: "11px 16px", color: "#ADB5BD", fontSize: 13 }}>{formatTarih(k.tarih)}</td>
-                          <td style={{ padding: "11px 16px", color: "#ADB5BD", fontSize: 12 }}>{k.notlar}</td>
-                          <td style={{ padding: "11px 16px", display: "flex", gap: 6 }}>
-                            <Btn variant="secondary" style={{ fontSize: 12, padding: "5px 10px" }} onClick={() => { setDuzenleId(k.id); setDuzenleForm({ kategori: k.kategori, baslik: k.baslik, durum: k.durum, tarih: k.tarih || "", notlar: k.notlar || "" }); }}>✏️</Btn>
-                            <Btn variant="danger" style={{ fontSize: 12, padding: "5px 10px" }} onClick={() => dokumanSil(k.id)}>Sil</Btn>
-                          </td>
-                        </>
-                      )}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
           </Card>
-        ) : (
-          <div style={{ textAlign: "center", padding: 60, color: "#ADB5BD" }}>Bu firma için henüz doküman kaydı yok. Yukarıdan ekleyin.</div>
         )}
+
+        {/* Ana doküman tablosu */}
+        <Card>
+          <CardHeader title={`📋 Doküman Takip — ${firma?.ad || ""}`} />
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={{ background: "#F4F7F6" }}>
+                {["Kategori", "Doküman", "Durum", "Tarih / Geçerlilik", "Notlar", ""].map(h => (
+                  <th key={h} style={{ padding: "10px 14px", textAlign: "left", fontSize: 11, color: "#233142", fontWeight: 700, textTransform: "uppercase" }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {standartSatirlar.map((sd, i) => {
+                const kat = DOKUMAN_KATEGORILER.find(k => k.id === sd.kategori);
+                if (duzenleId === `std_${i}`) return <SatirDuzenle key={i} sd={sd} />;
+                const sonrakiT = sd.kayit?.tarih && sd.periyotAy ? sonrakiTarih(sd.kayit.tarih, sd.periyotAy) : null;
+                return (
+                  <tr key={i} style={{ borderTop: "1px solid #dde3e0", background: i % 2 === 0 ? "transparent" : "#F4F7F633" }}>
+                    <td style={{ padding: "11px 14px", fontSize: 12, color: "#6b7280", whiteSpace: "nowrap" }}>
+                      <span style={{ background: "#F4F7F6", borderRadius: 5, padding: "2px 7px" }}>{kat?.icon} {kat?.ad}</span>
+                    </td>
+                    <td style={{ padding: "11px 14px", color: "#233142", fontSize: 13, fontWeight: 600 }}>
+                      {sd.baslik}
+                      {sd.periyotAy && <span style={{ fontSize: 11, color: "#ADB5BD", marginLeft: 6 }}>({sd.periyotAy} ay)</span>}
+                    </td>
+                    <td style={{ padding: "11px 14px" }}>
+                      {sd.kayit ? (
+                        <span style={{ color: DURUM_RENKLER[sd.kayit.durum] || "#9ca3af", fontWeight: 700, fontSize: 13 }}>{sd.kayit.durum}</span>
+                      ) : (
+                        <span style={{ color: "#f87171", fontWeight: 700, fontSize: 13 }}>YOK</span>
+                      )}
+                    </td>
+                    <td style={{ padding: "11px 14px" }}>
+                      {sd.periyotAy && sd.kayit?.tarih ? (
+                        <div>
+                          <div style={{ fontSize: 12, color: "#ADB5BD" }}>{formatTarih(sd.kayit.tarih)}</div>
+                          {sonrakiT && (
+                            <span style={{ background: sd.gecerlilik?.bg, color: sd.gecerlilik?.renk, borderRadius: 5, padding: "2px 7px", fontSize: 11, fontWeight: 700 }}>
+                              {sd.gecerlilik?.label} · {formatTarih(sonrakiT)}
+                            </span>
+                          )}
+                        </div>
+                      ) : sd.kayit?.tarih ? (
+                        <span style={{ fontSize: 12, color: "#ADB5BD" }}>{formatTarih(sd.kayit.tarih)}</span>
+                      ) : (
+                        <span style={{ color: "#ADB5BD", fontSize: 12 }}>—</span>
+                      )}
+                    </td>
+                    <td style={{ padding: "11px 14px", color: "#ADB5BD", fontSize: 12 }}>{sd.kayit?.notlar || ""}</td>
+                    <td style={{ padding: "11px 14px", whiteSpace: "nowrap" }}>
+                      <Btn variant="secondary" style={{ fontSize: 12, padding: "5px 10px" }}
+                        onClick={() => setDuzenleId(`std_${i}`)}>✏️ Güncelle</Btn>
+                    </td>
+                  </tr>
+                );
+              })}
+
+              {/* Özel eklenen dokümanlar */}
+              {ozelDokumanlar.length > 0 && (
+                <tr>
+                  <td colSpan={6} style={{ padding: "8px 14px", background: "#F4F7F6", fontSize: 11, color: "#ADB5BD", fontWeight: 700, textTransform: "uppercase", letterSpacing: 1 }}>
+                    📎 Özel Eklenen Dokümanlar
+                  </td>
+                </tr>
+              )}
+              {ozelDokumanlar.map((k, i) => {
+                const kat = DOKUMAN_KATEGORILER.find(x => x.id === k.kategori);
+                if (duzenleId === k.id) return (
+                  <tr key={k.id} style={{ background: "#fffbeb", borderTop: "1px solid #dde3e0" }}>
+                    <td style={{ padding: "8px 12px" }}>
+                      <select value={duzenleForm.kategori || k.kategori} onChange={e => setDuzenleForm(f => ({ ...f, kategori: e.target.value }))}
+                        style={{ padding: "5px 8px", background: "#F4F7F6", border: "1px solid #dde3e0", borderRadius: 6, color: "#454545", fontSize: 12 }}>
+                        {DOKUMAN_KATEGORILER.map(dk => <option key={dk.id} value={dk.id}>{dk.icon} {dk.ad}</option>)}
+                      </select>
+                    </td>
+                    <td style={{ padding: "8px 12px" }}>
+                      <input value={duzenleForm.baslik} onChange={e => setDuzenleForm(f => ({ ...f, baslik: e.target.value }))}
+                        style={{ width: "100%", padding: "5px 8px", background: "#F4F7F6", border: "1px solid #dde3e0", borderRadius: 6, color: "#454545", fontSize: 13 }} />
+                    </td>
+                    <td style={{ padding: "8px 12px" }}>
+                      <select value={duzenleForm.durum} onChange={e => setDuzenleForm(f => ({ ...f, durum: e.target.value }))}
+                        style={{ padding: "5px 8px", background: "#F4F7F6", border: "1px solid #dde3e0", borderRadius: 6, color: DURUM_RENKLER[duzenleForm.durum], fontSize: 13, fontWeight: 700 }}>
+                        {DURUM_SECENEKLER.map(d => <option key={d} value={d}>{d}</option>)}
+                      </select>
+                    </td>
+                    <td style={{ padding: "8px 12px" }}>
+                      <input type="date" value={duzenleForm.tarih || ""} onChange={e => setDuzenleForm(f => ({ ...f, tarih: e.target.value }))}
+                        style={{ padding: "5px 8px", background: "#F4F7F6", border: "1px solid #dde3e0", borderRadius: 6, color: "#454545", fontSize: 13 }} />
+                    </td>
+                    <td style={{ padding: "8px 12px" }}>
+                      <input value={duzenleForm.notlar || ""} onChange={e => setDuzenleForm(f => ({ ...f, notlar: e.target.value }))}
+                        style={{ width: "100%", padding: "5px 8px", background: "#F4F7F6", border: "1px solid #dde3e0", borderRadius: 6, color: "#454545", fontSize: 12 }} />
+                    </td>
+                    <td style={{ padding: "8px 12px", whiteSpace: "nowrap" }}>
+                      <Btn variant="success" style={{ fontSize: 12, padding: "5px 10px", marginRight: 4 }} onClick={() => satirGuncelle(k.id, duzenleForm)}>✓</Btn>
+                      <Btn variant="secondary" style={{ fontSize: 12, padding: "5px 10px" }} onClick={() => setDuzenleId(null)}>✕</Btn>
+                    </td>
+                  </tr>
+                );
+                return (
+                  <tr key={k.id} style={{ borderTop: "1px solid #dde3e0", background: i % 2 === 0 ? "#fafafa" : "transparent" }}>
+                    <td style={{ padding: "11px 14px", fontSize: 12, color: "#6b7280", whiteSpace: "nowrap" }}>
+                      <span style={{ background: "#F4F7F6", borderRadius: 5, padding: "2px 7px" }}>{kat?.icon} {kat?.ad}</span>
+                    </td>
+                    <td style={{ padding: "11px 14px", color: "#454545", fontSize: 13, fontWeight: 500 }}>{k.baslik}</td>
+                    <td style={{ padding: "11px 14px" }}>
+                      <span style={{ color: DURUM_RENKLER[k.durum] || "#9ca3af", fontWeight: 700, fontSize: 13 }}>{k.durum}</span>
+                    </td>
+                    <td style={{ padding: "11px 14px", color: "#ADB5BD", fontSize: 13 }}>{formatTarih(k.tarih)}</td>
+                    <td style={{ padding: "11px 14px", color: "#ADB5BD", fontSize: 12 }}>{k.notlar}</td>
+                    <td style={{ padding: "11px 14px", whiteSpace: "nowrap" }}>
+                      <Btn variant="secondary" style={{ fontSize: 12, padding: "5px 10px", marginRight: 4 }}
+                        onClick={() => { setDuzenleId(k.id); setDuzenleForm({ kategori: k.kategori, baslik: k.baslik, durum: k.durum, tarih: k.tarih || "", notlar: k.notlar || "" }); }}>✏️</Btn>
+                      <Btn variant="danger" style={{ fontSize: 12, padding: "5px 10px" }} onClick={() => dokumanSil(k.id)}>Sil</Btn>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </Card>
       </div>
     );
   };
-
 
   const EgitimTakipSayfa = () => {
     const [secFirmaId, setSecFirmaId] = useState(firmalar[0]?.id || null);
