@@ -543,32 +543,78 @@ export default function App() {
           const periyot = e.periyotFn(firma?.tehlike_sinifi);
           const tumKayitlar = egitimler.filter(x => x.personel_id === p.id && String(x.egitim_turu) === String(e.id)).sort((a,b) => new Date(b.egitim_tarihi) - new Date(a.egitim_tarihi));
           const son = tumKayitlar[0]?.egitim_tarihi || null;
-          const d = durumHesapla(son, periyot, "Eğitim Eksik");
+          const tehlikeSinifi = TEHLIKE[firma?.tehlike_sinifi];
+          const ikincEgitimGerekli = tehlikeSinifi?.egitim2Saat > 0;
+          // Eğitim1 ve Eğitim2 kayıtlarını bul
+          const kayit1 = tumKayitlar.find(k => k.egitim_no === 1) || (tumKayitlar.length > 0 ? tumKayitlar[tumKayitlar.length - 1] : null);
+          const kayit2 = tumKayitlar.find(k => k.egitim_no === 2) || (tumKayitlar.length > 1 ? tumKayitlar.find(k => k !== kayit1) : null);
+          // Tamamlanma ve geçerlilik hesabı
+          const egitimTamamlandi = ikincEgitimGerekli ? (kayit1 && kayit2) : !!kayit1;
+          const sonTarihDetay = egitimTamamlandi
+            ? [kayit1?.egitim_tarihi, kayit2?.egitim_tarihi].filter(Boolean).sort((a,b)=>new Date(b)-new Date(a))[0]
+            : null;
+          const d = durumHesapla(sonTarihDetay, periyot, "Eğitim Eksik");
           return (
             <div key={e.id} style={{ background: "#ffffff", borderRadius: 10, padding: 14, marginBottom: 10, border: "1px solid #dde3e0" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
                 <span style={{ fontSize: 18 }}>{e.icon}</span>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 600, color: "#233142" }}>{e.ad}</div>
-                  <div style={{ fontSize: 12, color: "#ADB5BD" }}>Sonraki: {formatTarih(sonrakiTarih(son, periyot))}</div>
+                  <div style={{ fontSize: 12, color: "#ADB5BD" }}>Sonraki: {formatTarih(sonrakiTarih(sonTarihDetay, periyot))}</div>
                 </div>
-                <Badge d={d} tarih={son} />
+                <Badge d={d} tarih={sonTarihDetay} />
               </div>
-              <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: tumKayitlar.length > 0 ? 8 : 0 }}>
-                <input type="date" value={tarihler[e.id] || ""} onChange={ev => setTarihler(t => ({ ...t, [e.id]: ev.target.value }))}
-                  style={{ flex: 1, padding: "7px 12px", background: "#F4F7F6", border: "1px solid #dde3e0", borderRadius: 7, color: tarihler[e.id] ? "#e5e7eb" : "#6b7280", fontSize: 13 }} />
-                <Btn variant="success" style={{ padding: "7px 14px", opacity: tarihler[e.id] ? 1 : 0.4 }} disabled={!tarihler[e.id]} onClick={() => { egitimKaydet(p.id, e.id, tarihler[e.id]); setTarihler(t => ({ ...t, [e.id]: "" })); }}>Kaydet</Btn>
+              {/* Eğitim 1 */}
+              <div style={{ marginBottom: 8 }}>
+                <div style={{ fontSize: 11, color: "#ADB5BD", marginBottom: 4, fontWeight: 600 }}>
+                  EĞİTİM 1 {tehlikeSinifi ? `(${tehlikeSinifi.egitim1Saat} saat)` : ""}
+                  {kayit1 && <span style={{ color: "#27ae60", marginLeft: 8 }}>✅ {formatTarih(kayit1.egitim_tarihi)}</span>}
+                </div>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <input type="date" value={tarihler[`${e.id}_1`] || ""} onChange={ev => setTarihler(t => ({ ...t, [`${e.id}_1`]: ev.target.value }))}
+                    style={{ flex: 1, padding: "7px 12px", background: "#F4F7F6", border: "1px solid #dde3e0", borderRadius: 7, color: tarihler[`${e.id}_1`] ? "#454545" : "#6b7280", fontSize: 13 }} />
+                  <Btn variant="success" style={{ padding: "7px 14px", opacity: tarihler[`${e.id}_1`] ? 1 : 0.4 }} disabled={!tarihler[`${e.id}_1`]} onClick={async () => {
+                    const tarih = tarihler[`${e.id}_1`];
+                    if (kayit1) await supabase.from("egitimler").update({ egitim_tarihi: tarih }).eq("id", kayit1.id);
+                    else await supabase.from("egitimler").insert({ personel_id: p.id, egitim_turu: String(e.id), egitim_tarihi: tarih, egitim_no: 1 });
+                    await veriYukle();
+                    setTarihler(t => ({ ...t, [`${e.id}_1`]: "" }));
+                  }}>Kaydet</Btn>
+                  {kayit1 && <button onClick={() => egitimSil(kayit1.id)} style={{ background: "#fdedec", border: "1px solid #f5b7b1", color: "#e74c3c", borderRadius: 6, padding: "6px 10px", cursor: "pointer", fontSize: 12 }}>Sil</button>}
+                </div>
               </div>
-              {tumKayitlar.length > 0 && (
-                <div>
+              {/* Eğitim 2 — sadece gerekli tehlike sınıflarında göster */}
+              {ikincEgitimGerekli && (
+                <div style={{ marginBottom: 4 }}>
+                  <div style={{ fontSize: 11, color: "#ADB5BD", marginBottom: 4, fontWeight: 600 }}>
+                    EĞİTİM 2 {tehlikeSinifi ? `(${tehlikeSinifi.egitim2Saat} saat)` : ""}
+                    {kayit2 && <span style={{ color: "#27ae60", marginLeft: 8 }}>✅ {formatTarih(kayit2.egitim_tarihi)}</span>}
+                  </div>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <input type="date" value={tarihler[`${e.id}_2`] || ""} onChange={ev => setTarihler(t => ({ ...t, [`${e.id}_2`]: ev.target.value }))}
+                      style={{ flex: 1, padding: "7px 12px", background: "#F4F7F6", border: "1px solid #dde3e0", borderRadius: 7, color: tarihler[`${e.id}_2`] ? "#454545" : "#6b7280", fontSize: 13 }} />
+                    <Btn variant="success" style={{ padding: "7px 14px", opacity: tarihler[`${e.id}_2`] ? 1 : 0.4 }} disabled={!tarihler[`${e.id}_2`]} onClick={async () => {
+                      const tarih = tarihler[`${e.id}_2`];
+                      if (kayit2) await supabase.from("egitimler").update({ egitim_tarihi: tarih }).eq("id", kayit2.id);
+                      else await supabase.from("egitimler").insert({ personel_id: p.id, egitim_turu: String(e.id), egitim_tarihi: tarih, egitim_no: 2 });
+                      await veriYukle();
+                      setTarihler(t => ({ ...t, [`${e.id}_2`]: "" }));
+                    }}>Kaydet</Btn>
+                    {kayit2 && <button onClick={() => egitimSil(kayit2.id)} style={{ background: "#fdedec", border: "1px solid #f5b7b1", color: "#e74c3c", borderRadius: 6, padding: "6px 10px", cursor: "pointer", fontSize: 12 }}>Sil</button>}
+                  </div>
+                </div>
+              )}
+              {/* Geçmiş kayıtlar (ekstra kayıtlar varsa) */}
+              {tumKayitlar.length > 2 && (
+                <div style={{ marginTop: 8 }}>
                   <button onClick={() => setGecmisAc(g => ({ ...g, [e.id]: !g[e.id] }))} style={{ background: "none", border: "none", color: "#ADB5BD", fontSize: 12, cursor: "pointer", padding: "2px 0" }}>
                     {gecmisAc[e.id] ? "▲ Geçmişi gizle" : `▼ Geçmiş kayıtlar (${tumKayitlar.length})`}
                   </button>
                   {gecmisAc[e.id] && (
                     <div style={{ marginTop: 8, borderTop: "1px solid #dde3e0", paddingTop: 8 }}>
                       {tumKayitlar.map((k, i) => (
-                        <div key={k.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "5px 0", borderBottom: i < tumKayitlar.length-1 ? "1px solid #1f2937" : "none" }}>
-                          <span style={{ fontSize: 13, color: i === 0 ? "#4ade80" : "#9ca3af" }}>{i === 0 ? "✅ " : "  "}{formatTarih(k.egitim_tarihi)}</span>
+                        <div key={k.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "5px 0", borderBottom: i < tumKayitlar.length-1 ? "1px solid #f0f0f0" : "none" }}>
+                          <span style={{ fontSize: 13, color: i === 0 ? "#4ade80" : "#9ca3af" }}>{i === 0 ? "✅ " : "  "}{formatTarih(k.egitim_tarihi)} {k.egitim_no ? `(Eğitim ${k.egitim_no})` : ""}</span>
                           <button onClick={() => egitimSil(k.id)} style={{ background: "#fdedec", border: "1px solid #f5b7b1", color: "#e74c3c", borderRadius: 6, padding: "3px 8px", cursor: "pointer", fontSize: 12 }}>Sil</button>
                         </div>
                       ))}
@@ -880,26 +926,37 @@ export default function App() {
           </div>
         </Card>
 
-        {/* Doküman listesi kategoriye göre */}
-        {DOKUMAN_KATEGORILER.map(kat => {
-          const kayitlar = firmaDokumanlari.filter(d => d.kategori === kat.id);
-          if (!kayitlar.length) return null;
-          return (
-            <Card key={kat.id} style={{ marginBottom: 14 }}>
-              <CardHeader title={`${kat.icon} ${kat.ad} (${kayitlar.length})`} />
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead>
-                  <tr style={{ background: "#F4F7F6" }}>
-                    {["Başlık", "Durum", "Tarih", "Notlar", ""].map(h => (
-                      <th key={h} style={{ padding: "9px 16px", textAlign: "left", fontSize: 11, color: "#233142", fontWeight: 700, textTransform: "uppercase" }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {kayitlar.sort((a,b) => new Date(b.created_at) - new Date(a.created_at)).map((k, i) => (
+        {/* Doküman listesi — tek birleşik tablo */}
+        {firmaDokumanlari.length > 0 ? (
+          <Card>
+            <CardHeader title={`📋 Tüm Dokümanlar — ${firma?.ad || ""} (${firmaDokumanlari.length})`} />
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ background: "#F4F7F6" }}>
+                  {["Kategori", "Başlık", "Durum", "Tarih", "Notlar", ""].map(h => (
+                    <th key={h} style={{ padding: "9px 16px", textAlign: "left", fontSize: 11, color: "#233142", fontWeight: 700, textTransform: "uppercase" }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {firmaDokumanlari.sort((a,b) => {
+                  // Önce kategoriye göre sırala, sonra tarihe göre
+                  const katA = DOKUMAN_KATEGORILER.findIndex(k => k.id === a.kategori);
+                  const katB = DOKUMAN_KATEGORILER.findIndex(k => k.id === b.kategori);
+                  if (katA !== katB) return katA - katB;
+                  return new Date(b.created_at) - new Date(a.created_at);
+                }).map((k, i) => {
+                  const kat = DOKUMAN_KATEGORILER.find(x => x.id === k.kategori);
+                  return (
                     <tr key={k.id} style={{ borderTop: "1px solid #dde3e0", background: i % 2 === 0 ? "transparent" : "#F4F7F633" }}>
                       {duzenleId === k.id ? (
                         <>
+                          <td style={{ padding: "8px 16px" }}>
+                            <select value={duzenleForm.kategori || k.kategori} onChange={e => setDuzenleForm(f => ({ ...f, kategori: e.target.value }))}
+                              style={{ padding: "6px 8px", background: "#F4F7F6", border: "1px solid #dde3e0", borderRadius: 6, color: "#454545", fontSize: 12 }}>
+                              {DOKUMAN_KATEGORILER.map(dk => <option key={dk.id} value={dk.id}>{dk.icon} {dk.ad}</option>)}
+                            </select>
+                          </td>
                           <td style={{ padding: "8px 16px" }}>
                             <input value={duzenleForm.baslik} onChange={e => setDuzenleForm(f => ({ ...f, baslik: e.target.value }))}
                               style={{ width: "100%", padding: "6px 8px", background: "#F4F7F6", border: "1px solid #dde3e0", borderRadius: 6, color: "#454545", fontSize: 13 }} />
@@ -925,6 +982,9 @@ export default function App() {
                         </>
                       ) : (
                         <>
+                          <td style={{ padding: "11px 16px", fontSize: 12, color: "#6b7280", whiteSpace: "nowrap" }}>
+                            <span style={{ background: "#F4F7F6", borderRadius: 6, padding: "3px 8px" }}>{kat?.icon} {kat?.ad}</span>
+                          </td>
                           <td style={{ padding: "11px 16px", color: "#454545", fontSize: 13, fontWeight: 500 }}>{k.baslik}</td>
                           <td style={{ padding: "11px 16px" }}>
                             <span style={{ color: DURUM_RENKLER[k.durum] || "#9ca3af", fontWeight: 700, fontSize: 13 }}>{k.durum}</span>
@@ -932,19 +992,18 @@ export default function App() {
                           <td style={{ padding: "11px 16px", color: "#ADB5BD", fontSize: 13 }}>{formatTarih(k.tarih)}</td>
                           <td style={{ padding: "11px 16px", color: "#ADB5BD", fontSize: 12 }}>{k.notlar}</td>
                           <td style={{ padding: "11px 16px", display: "flex", gap: 6 }}>
-                            <Btn variant="secondary" style={{ fontSize: 12, padding: "5px 10px" }} onClick={() => { setDuzenleId(k.id); setDuzenleForm({ baslik: k.baslik, durum: k.durum, tarih: k.tarih || "", notlar: k.notlar || "" }); }}>✏️</Btn>
+                            <Btn variant="secondary" style={{ fontSize: 12, padding: "5px 10px" }} onClick={() => { setDuzenleId(k.id); setDuzenleForm({ kategori: k.kategori, baslik: k.baslik, durum: k.durum, tarih: k.tarih || "", notlar: k.notlar || "" }); }}>✏️</Btn>
                             <Btn variant="danger" style={{ fontSize: 12, padding: "5px 10px" }} onClick={() => dokumanSil(k.id)}>Sil</Btn>
                           </td>
                         </>
                       )}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </Card>
-          );
-        })}
-        {firmaDokumanlari.length === 0 && (
+                  );
+                })}
+              </tbody>
+            </table>
+          </Card>
+        ) : (
           <div style={{ textAlign: "center", padding: 60, color: "#ADB5BD" }}>Bu firma için henüz doküman kaydı yok. Yukarıdan ekleyin.</div>
         )}
       </div>
@@ -1000,7 +1059,12 @@ export default function App() {
       const { egitim1, egitim2 } = kisiEgitimler(p.id);
       const saatler = toplamSaatHesapla(egitim1, egitim2);
       const periyot = egitimTurleri.find(e => String(e.id) === String(egitimTuru))?.periyotFn(firma?.tehlike_sinifi);
-      const d = durumHesapla(sonTarih(egitim1, egitim2), periyot, "Eğitim Eksik");
+      // Eğer 2. eğitim gerekli (tehlike2Saat > 0) ama yapılmamışsa → Eğitim Eksik
+      const ikincEgitimGerekli = tehlike?.egitim2Saat > 0;
+      const egitimTamamlandi = ikincEgitimGerekli ? (egitim1 && egitim2) : !!egitim1;
+      // Geçerlilik tarihi: eğitim tamamlandıysa en son eğitim tarihinden itibaren sayılır
+      const gecerlilikBaslangic = egitimTamamlandi ? sonTarih(egitim1, egitim2) : null;
+      const d = durumHesapla(gecerlilikBaslangic, periyot, "Eğitim Eksik");
       return { ...p, egitim1, egitim2, saatler, d };
     }).sort((a, b) => b.d.onc - a.d.onc);
 
