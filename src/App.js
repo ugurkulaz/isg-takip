@@ -936,11 +936,6 @@ export default function App() {
       });
       return (
         <tr style={{ background: "#fffbeb", borderTop: "1px solid #dde3e0" }}>
-          <td style={{ padding: "8px 12px", fontSize: 12, color: "#6b7280", whiteSpace: "nowrap" }}>
-            <span style={{ background: "#F4F7F6", borderRadius: 5, padding: "2px 7px" }}>
-              {DOKUMAN_KATEGORILER.find(k => k.id === sd.kategori)?.icon} {DOKUMAN_KATEGORILER.find(k => k.id === sd.kategori)?.ad}
-            </span>
-          </td>
           <td style={{ padding: "8px 12px", color: "#233142", fontSize: 13, fontWeight: 600 }}>{sd.baslik}</td>
           <td style={{ padding: "8px 12px" }}>
             <select value={form.durum} onChange={e => setForm(f => ({ ...f, durum: e.target.value }))}
@@ -1035,7 +1030,7 @@ export default function App() {
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ background: "#F4F7F6" }}>
-                {["Kategori", "Doküman", "Durum", "Tarih / Geçerlilik", "Notlar", ""].map(h => (
+                {["Doküman", "Durum", "Tarih / Geçerlilik", "Notlar", ""].map(h => (
                   <th key={h} style={{ padding: "10px 14px", textAlign: "left", fontSize: 11, color: "#233142", fontWeight: 700, textTransform: "uppercase" }}>{h}</th>
                 ))}
               </tr>
@@ -1047,9 +1042,6 @@ export default function App() {
                 const sonrakiT = sd.kayit?.tarih && sd.periyotAy ? sonrakiTarih(sd.kayit.tarih, sd.periyotAy) : null;
                 return (
                   <tr key={i} style={{ borderTop: "1px solid #dde3e0", background: i % 2 === 0 ? "transparent" : "#F4F7F633" }}>
-                    <td style={{ padding: "11px 14px", fontSize: 12, color: "#6b7280", whiteSpace: "nowrap" }}>
-                      <span style={{ background: "#F4F7F6", borderRadius: 5, padding: "2px 7px" }}>{kat?.icon} {kat?.ad}</span>
-                    </td>
                     <td style={{ padding: "11px 14px", color: "#233142", fontSize: 13, fontWeight: 600 }}>
                       {sd.baslik}
                       {sd.periyotAy && <span style={{ fontSize: 11, color: "#ADB5BD", marginLeft: 6 }}>({sd.periyotAy} ay)</span>}
@@ -1099,12 +1091,6 @@ export default function App() {
                 if (duzenleId === k.id) return (
                   <tr key={k.id} style={{ background: "#fffbeb", borderTop: "1px solid #dde3e0" }}>
                     <td style={{ padding: "8px 12px" }}>
-                      <select value={duzenleForm.kategori || k.kategori} onChange={e => setDuzenleForm(f => ({ ...f, kategori: e.target.value }))}
-                        style={{ padding: "5px 8px", background: "#F4F7F6", border: "1px solid #dde3e0", borderRadius: 6, color: "#454545", fontSize: 12 }}>
-                        {DOKUMAN_KATEGORILER.map(dk => <option key={dk.id} value={dk.id}>{dk.icon} {dk.ad}</option>)}
-                      </select>
-                    </td>
-                    <td style={{ padding: "8px 12px" }}>
                       <input value={duzenleForm.baslik} onChange={e => setDuzenleForm(f => ({ ...f, baslik: e.target.value }))}
                         style={{ width: "100%", padding: "5px 8px", background: "#F4F7F6", border: "1px solid #dde3e0", borderRadius: 6, color: "#454545", fontSize: 13 }} />
                     </td>
@@ -1130,9 +1116,6 @@ export default function App() {
                 );
                 return (
                   <tr key={k.id} style={{ borderTop: "1px solid #dde3e0", background: i % 2 === 0 ? "#fafafa" : "transparent" }}>
-                    <td style={{ padding: "11px 14px", fontSize: 12, color: "#6b7280", whiteSpace: "nowrap" }}>
-                      <span style={{ background: "#F4F7F6", borderRadius: 5, padding: "2px 7px" }}>{kat?.icon} {kat?.ad}</span>
-                    </td>
                     <td style={{ padding: "11px 14px", color: "#454545", fontSize: 13, fontWeight: 500 }}>{k.baslik}</td>
                     <td style={{ padding: "11px 14px" }}>
                       <span style={{ color: DURUM_RENKLER[k.durum] || "#9ca3af", fontWeight: 700, fontSize: 13 }}>{k.durum}</span>
